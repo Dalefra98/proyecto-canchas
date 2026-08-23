@@ -3,9 +3,12 @@ package ec.ups.dae.usuarios.service;
 import ec.ups.dae.usuarios.dto.RegistroRequest;
 import ec.ups.dae.usuarios.dto.UsuarioResponse;
 import ec.ups.dae.usuarios.entity.Usuario;
+import ec.ups.dae.usuarios.exception.AutoInactivacionException;
 import ec.ups.dae.usuarios.exception.EmailDuplicadoException;
+import ec.ups.dae.usuarios.exception.UsuarioNoEncontradoException;
 import ec.ups.dae.usuarios.mapper.UsuarioMapper;
 import ec.ups.dae.usuarios.repository.UsuarioRepository;
+import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,5 +41,31 @@ public class UsuarioService {
         String passwordHash = passwordEncoder.encode(peticion.password());
         Usuario usuario = usuarioRepository.save(usuarioMapper.aEntidad(peticion, passwordHash));
         return usuarioMapper.aRespuesta(usuario);
+    }
+
+    /**
+     * HU-03: listado completo para el ADMIN, incluidos los inactivos. Sin paginacion ni
+     * filtros, porque el contrato no congela ningun parametro de consulta (S-07).
+     */
+    @Transactional(readOnly = true)
+    public List<UsuarioResponse> listar() {
+        return usuarioRepository.findAll().stream()
+                .map(usuarioMapper::aRespuesta)
+                .toList();
+    }
+
+    /**
+     * HU-04: el ADMIN activa o inactiva a un usuario. S-05 prohibe que un ADMIN se inactive
+     * a si mismo, para no dejar el sistema sin administrador.
+     */
+    @Transactional
+    public UsuarioResponse cambiarEstado(Long usuarioId, boolean activo, Long solicitanteId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("El usuario no existe"));
+        if (!activo && usuarioId.equals(solicitanteId)) {
+            throw new AutoInactivacionException("Un administrador no puede inactivarse a si mismo");
+        }
+        usuario.setActivo(activo);
+        return usuarioMapper.aRespuesta(usuarioRepository.save(usuario));
     }
 }

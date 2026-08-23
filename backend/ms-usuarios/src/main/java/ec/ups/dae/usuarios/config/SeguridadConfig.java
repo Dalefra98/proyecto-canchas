@@ -51,6 +51,9 @@ public class SeguridadConfig {
                         .requestMatchers(HttpMethod.POST, "/api/usuarios/sesiones").permitAll()
                         // Sin estas tres, springdoc responde 401 y E-06 no se puede demostrar.
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Listado y cambio de estado son solo del ADMIN (HU-03, HU-04).
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/usuarios/*/estado").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(manejo -> manejo
                         .authenticationEntryPoint(puntoDeEntrada())
