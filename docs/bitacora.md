@@ -46,10 +46,41 @@ al codigo como nombres inventados si nadie los revisaba.
 
 ---
 
+## Spec 02 — ms-usuarios
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 23/08/2026 | C1 | Generar requirements.md de ms-usuarios | Sí, tras responder 4 preguntas | La IA se detuvo en 4 datos faltantes (mecanismo del token, puerto y variables de Docker, coordenadas Maven, política de contraseña) en vez de inventarlos; se decidió JWT HS256 validado localmente, 8 h de vigencia y contraseña de 8 a 100 caracteres |
+| 2 | 23/08/2026 | C2 | Generar design.md con modelo, DTOs, endpoints y excepciones | Sí, tras 4 correcciones | La IA dejó `ERROR_INTERNO` fuera del contrato (se agregó a `docs/contratos/README.md`), no cubría 405 ni 415 (se traducen a 400 `DATOS_INVALIDOS`), no listaba las rutas de Swagger que deben quedar públicas, y nombraba la librería JWT sin fijarla (jjwt 0.12.x) |
+| 3 | 23/08/2026 | C3 | Generar tasks.md con 5 a 8 tareas verificables | Sí, tras 2 correcciones | T6 usaba una contraseña de seed que nunca se decidió (está documentada en la cabecera de `05-seed.sql`: `Admin123` / `Usuario123`), y faltaba la precondición de `postgres` en estado `healthy` antes de los `curl` |
+| 4 | 23/08/2026 | C3 | Ejecutar T1 (esqueleto Maven, imagen y servicio en compose) | Sí, tras 3 correcciones | Spring Initializr ya solo entrega la rama 4.x: se fijó **Spring Boot 3.5.3** en `CLAUDE.md` §3 porque springdoc 2.8.6 exige Spring Framework 6 y la documentación OpenAPI es entregable obligatorio. El `mvn` del host falló dos veces por TLS y se resolvió con el volumen `m2repo`; el build de imagen falló por DNS en `dependency:go-offline` y se resolvió con cache mount de BuildKit, ahora patrón oficial en `CLAUDE.md` §1 |
+| 5 | 23/08/2026 | C3 | Ejecutar T2 a T4 (entidad y repositorio, DTOs y manejo de excepciones, seguridad y token) | Sí | 3 ejecuciones verificadas. `ddl-auto=validate` aceptó la entidad contra el DDL de la spec 01 sin tocar el DDL. Sin correcciones de contenido |
+| 6 | 23/08/2026 | C3 | Ejecutar T5 a T7 (registro, inicio de sesión, listado y cambio de estado) | Sí | 3 ejecuciones verificadas con salida real: 201/409/400 en registro, 200/401 en sesión con mensaje idéntico, y 200/403/404/400 en el listado y el cambio de estado, incluida la auto-inactivación del ADMIN |
+| 7 | 23/08/2026 | C3 | Ejecutar T8 (OpenAPI y cierre de la spec) | Sí | El documento OpenAPI expone los 4 endpoints con sus códigos exactos y `password` solo en `RegistroRequest` y `LoginRequest`. Hallazgo: el 405 se traduce a 400 solo cuando la petición pasa la cadena de seguridad; sin token, la ruta protegida responde 401 antes de llegar a Spring MVC |
+
+Total de iteraciones: 7
+Tiempo invertido: ____
+
+**Observación:** las correcciones de más peso no fueron de código sino de versiones y de
+entorno: Initializr dejó de ofrecer Spring Boot 3.x, y las dos fallas de red (TLS en el host,
+DNS dentro del build) obligaron a cambiar los comandos oficiales del proyecto. Las tres
+compuertas volvieron a servir para lo mismo: la IA propone algo plausible pero incompleto, y
+el trabajo real está en detectar lo que falta antes de que llegue al código.
+
+---
+
 **Hallazgos de entorno (aplican a todas las specs):**
 - `pg_isready` responde OK mientras Postgres aun ejecuta los scripts de
   `docker-entrypoint-initdb.d`. El `healthcheck` del compose da un falso positivo,
   por lo que un microservicio con `depends_on: service_healthy` puede arrancar antes
-  de que existan las tablas. Pendiente de resolver en la spec 02.
+  de que existan las tablas. Resuelto antes de la spec 02: la sonda ya no usa
+  `pg_isready` sino un `SELECT` del usuario ADMIN del seed, es decir del último script
+  del init; `ms-usuarios` arrancó siempre con las tablas ya creadas.
+- `repo.maven.apache.org` corta el handshake TLS al descargar el árbol completo de
+  dependencias. El comando oficial de compilación monta el volumen `m2repo` en
+  `/root/.m2` para cachearlas, y el `Dockerfile` usa cache mount de BuildKit porque
+  `docker compose build` no monta volúmenes. Ambos quedaron en `CLAUDE.md` §1.
 - En Git Bash, `psql -f /docker-entrypoint-initdb.d/...` requiere `MSYS_NO_PATHCONV=1`
   para que no se traduzca la ruta.

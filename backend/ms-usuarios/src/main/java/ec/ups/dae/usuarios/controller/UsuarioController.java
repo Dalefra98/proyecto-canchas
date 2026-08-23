@@ -1,12 +1,18 @@
 package ec.ups.dae.usuarios.controller;
 
 import ec.ups.dae.usuarios.dto.CambioEstadoRequest;
+import ec.ups.dae.usuarios.dto.ErrorResponse;
 import ec.ups.dae.usuarios.dto.LoginRequest;
 import ec.ups.dae.usuarios.dto.LoginResponse;
 import ec.ups.dae.usuarios.dto.RegistroRequest;
 import ec.ups.dae.usuarios.dto.UsuarioResponse;
 import ec.ups.dae.usuarios.service.AutenticacionService;
 import ec.ups.dae.usuarios.service.UsuarioService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -35,6 +41,14 @@ public class UsuarioController {
     /**
      * HU-02 — Inicio de sesion. Respuestas: 200, 400 DATOS_INVALIDOS, 401 NO_AUTENTICADO.
      */
+    @Operation(summary = "Inicia sesion y emite el token", description = "Publico.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sesion iniciada"),
+            @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "NO_AUTENTICADO",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/sesiones")
     public ResponseEntity<LoginResponse> iniciarSesion(@Valid @RequestBody LoginRequest peticion) {
         return ResponseEntity.ok(autenticacionService.iniciarSesion(peticion));
@@ -43,6 +57,14 @@ public class UsuarioController {
     /**
      * HU-01 — Registro publico. Respuestas: 201, 400 DATOS_INVALIDOS, 409 EMAIL_DUPLICADO.
      */
+    @Operation(summary = "Registra un usuario", description = "Publico. Siempre crea rol USUARIO activo.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Usuario creado"),
+            @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "EMAIL_DUPLICADO",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping
     public ResponseEntity<UsuarioResponse> registrar(@Valid @RequestBody RegistroRequest peticion) {
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.registrar(peticion));
@@ -51,6 +73,14 @@ public class UsuarioController {
     /**
      * HU-03 — Listado para el ADMIN. Respuestas: 200, 401 NO_AUTENTICADO, 403 SIN_PERMISO.
      */
+    @Operation(summary = "Lista todos los usuarios", description = "Solo ADMIN.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Listado de usuarios"),
+            @ApiResponse(responseCode = "401", description = "NO_AUTENTICADO",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "SIN_PERMISO",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping
     public ResponseEntity<List<UsuarioResponse>> listar() {
         return ResponseEntity.ok(usuarioService.listar());
@@ -60,6 +90,18 @@ public class UsuarioController {
      * HU-04 — Activar o inactivar un usuario. Respuestas: 200, 400 DATOS_INVALIDOS,
      * 401 NO_AUTENTICADO, 403 SIN_PERMISO, 404 NO_ENCONTRADO.
      */
+    @Operation(summary = "Activa o inactiva un usuario", description = "Solo ADMIN.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Usuario actualizado"),
+            @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "NO_AUTENTICADO",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "SIN_PERMISO",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "NO_ENCONTRADO",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PatchMapping("/{usuarioId}/estado")
     public ResponseEntity<UsuarioResponse> cambiarEstado(@PathVariable Long usuarioId,
                                                          @Valid @RequestBody CambioEstadoRequest peticion,
