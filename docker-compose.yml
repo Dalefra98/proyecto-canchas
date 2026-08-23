@@ -12,6 +12,7 @@ services:
       - ./infra/postgres/02-ddl-usuarios.sql:/docker-entrypoint-initdb.d/02-ddl-usuarios.sql:ro
       - ./infra/postgres/03-ddl-canchas.sql:/docker-entrypoint-initdb.d/03-ddl-canchas.sql:ro
       - ./infra/postgres/04-ddl-reservas.sql:/docker-entrypoint-initdb.d/04-ddl-reservas.sql:ro
+      - ./infra/postgres/05-seed.sql:/docker-entrypoint-initdb.d/05-seed.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
