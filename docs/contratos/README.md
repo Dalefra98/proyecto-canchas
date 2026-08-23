@@ -116,11 +116,11 @@ respuesta son los de la tabla "Formato de error".
 | PATCH | `/api/usuarios/{usuarioId}/estado` | ADMIN | 200, 400, 401, 403, 404 |
 | GET | `/api/canchas` | ADMIN, USUARIO | 200, 401 |
 | GET | `/api/canchas/{canchaId}` | ADMIN, USUARIO | 200, 401, 404 |
-| POST | `/api/canchas` | ADMIN | 201, 400, 401, 403 |
-| PUT | `/api/canchas/{canchaId}` | ADMIN | 200, 400, 401, 403, 404 |
+| POST | `/api/canchas` | ADMIN | 201, 400, 401, 403, 409 |
+| PUT | `/api/canchas/{canchaId}` | ADMIN | 200, 400, 401, 403, 404, 409 |
 | PATCH | `/api/canchas/{canchaId}/estado` | ADMIN | 200, 400, 401, 403, 404 |
-| GET | `/api/canchas/{canchaId}/bloqueos` | ADMIN, USUARIO | 200, 401, 404 |
-| POST | `/api/canchas/{canchaId}/bloqueos` | ADMIN | 201, 400, 401, 403, 404 |
+| GET | `/api/canchas/{canchaId}/bloqueos?fecha` | ADMIN, USUARIO | 200, 400, 401, 404 |
+| POST | `/api/canchas/{canchaId}/bloqueos` | ADMIN | 201, 400, 401, 403, 404, 409 |
 | DELETE | `/api/canchas/{canchaId}/bloqueos/{id}` | ADMIN | 204, 401, 403, 404 |
 | GET | `/api/reservas/disponibilidad?canchaId&fecha` | ADMIN, USUARIO | 200, 400, 401, 404 |
 | POST | `/api/reservas` | USUARIO | 201, 400, 401, 404, 409 |
@@ -130,6 +130,15 @@ respuesta son los de la tabla "Formato de error".
 | GET | `/api/reportes/ocupacion?desde&hasta` | ADMIN | 200, 400, 401, 403 |
 | GET | `/api/reportes/reservas?desde&hasta` | ADMIN | 200, 400, 401, 403 |
 | GET | `/api/reportes/cancelaciones?desde&hasta` | ADMIN | 200, 400, 401, 403 |
+
+Notas de las rutas de canchas:
+
+- `GET /api/canchas` y `GET /api/canchas/{canchaId}` **filtran por rol, sin parámetro de
+  consulta**: el `ADMIN` recibe todas las canchas y el `USUARIO` solo las que tienen
+  `activa = true`. Para un `USUARIO`, una cancha inactiva responde `404 NO_ENCONTRADO`.
+- `GET /api/canchas/{canchaId}/bloqueos` acepta el parámetro **opcional** `fecha` en
+  formato `AAAA-MM-DD`. Sin él devuelve todos los bloqueos de la cancha; con él, solo los
+  de ese día. Un `fecha` con formato inválido responde `400 DATOS_INVALIDOS`.
 
 ## Formato de error (todos los microservicios)
 
@@ -144,6 +153,8 @@ respuesta son los de la tabla "Formato de error".
 | Sin permiso para la operación | 403 | `SIN_PERMISO` |
 | Recurso inexistente | 404 | `NO_ENCONTRADO` |
 | Email ya registrado | 409 | `EMAIL_DUPLICADO` |
+| Nombre de cancha ya registrado | 409 | `NOMBRE_DUPLICADO` |
+| Bloqueo ya registrado en esa franja | 409 | `BLOQUEO_DUPLICADO` |
 | Bloque ya reservado (RN-02) | 409 | `BLOQUE_OCUPADO` |
 | Límite de reservas activas (RN-06) | 409 | `LIMITE_RESERVAS` |
 | Reserva ya ocurrida (RN-04) | 409 | `RESERVA_PASADA` |
@@ -175,3 +186,7 @@ Props que el shell entrega a todo remote:
 | 23/08/2026 | Se agrega `GET /api/canchas/{canchaId}` (ADMIN, USUARIO) y se amplía `GET /api/canchas/{canchaId}/bloqueos` a ADMIN y USUARIO, para que ms-reservas calcule disponibilidad | David Aristega | 01-modelo-y-contratos |
 | 23/08/2026 | Se agrega el código de error `EMAIL_DUPLICADO` (HTTP 409) | David Aristega | 01-modelo-y-contratos |
 | 23/08/2026 | Se agrega el código de error `ERROR_INTERNO` (HTTP 500) para toda excepción no prevista; lo usan los cuatro microservicios | David Aristega | 02-ms-usuarios y siguientes |
+| 23/08/2026 | Se agrega el código de error `NOMBRE_DUPLICADO` (HTTP 409) por la restricción `uq_cancha_nombre`; `POST /api/canchas` y `PUT /api/canchas/{canchaId}` suman `409` a sus respuestas | David Aristega | 03-ms-canchas |
+| 23/08/2026 | Se agrega el código de error `BLOQUEO_DUPLICADO` (HTTP 409) por la restricción `uq_bloqueo_franja`; `POST /api/canchas/{canchaId}/bloqueos` suma `409` | David Aristega | 03-ms-canchas |
+| 23/08/2026 | `GET /api/canchas/{canchaId}/bloqueos` acepta el parámetro opcional `fecha` (`AAAA-MM-DD`) y suma `400`, para que ms-reservas calcule la disponibilidad de un día sin traer todos los bloqueos | David Aristega | 03-ms-canchas |
+| 23/08/2026 | `GET /api/canchas` y `GET /api/canchas/{canchaId}` filtran por rol sin parámetro: el USUARIO solo ve canchas `activa = true` y recibe `404` en una inactiva; el ADMIN ve todas | David Aristega | 03-ms-canchas |
