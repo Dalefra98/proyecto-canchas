@@ -1,8 +1,11 @@
 package ec.ups.dae.canchas.service;
 
+import ec.ups.dae.canchas.dto.CanchaRequest;
 import ec.ups.dae.canchas.dto.CanchaResponse;
 import ec.ups.dae.canchas.entity.Cancha;
 import ec.ups.dae.canchas.exception.CanchaNoEncontradaException;
+import ec.ups.dae.canchas.exception.HorarioInvalidoException;
+import ec.ups.dae.canchas.exception.NombreDuplicadoException;
 import ec.ups.dae.canchas.mapper.CanchaMapper;
 import ec.ups.dae.canchas.repository.CanchaRepository;
 import java.util.List;
@@ -44,6 +47,64 @@ public class CanchaService {
     @Transactional(readOnly = true)
     public CanchaResponse obtener(Long canchaId) {
         return canchaMapper.aRespuesta(buscarVisible(canchaId));
+    }
+
+    /**
+     * HU-03: alta de cancha. Toda cancha nace activa (S-02). Doble barrera contra el nombre
+     * duplicado: si dos altas simultaneas pasan existsByNombre, la restriccion
+     * uq_cancha_nombre es el arbitro y el manejador traduce la violacion al mismo
+     * 409 NOMBRE_DUPLICADO (decision P-01, design D-08).
+     */
+    @Transactional
+    public CanchaResponse crear(CanchaRequest peticion) {
+        Cancha cancha = canchaMapper.aEntidad(peticion);
+        validarHorario(cancha);
+        if (canchaRepository.existsByNombre(cancha.getNombre())) {
+            throw new NombreDuplicadoException("Ya existe una cancha con ese nombre");
+        }
+        return canchaMapper.aRespuesta(canchaRepository.save(cancha));
+    }
+
+    /**
+     * HU-04: edicion de cancha. Reemplaza los cuatro campos editables y no toca activa, que
+     * se maneja solo con PATCH .../estado (S-03, design D-11). Reenviar el nombre que ya
+     * tenia esa misma cancha no es duplicado: por eso la consulta excluye su propio id.
+     */
+    @Transactional
+    public CanchaResponse editar(Long canchaId, CanchaRequest peticion) {
+        Cancha cancha = buscar(canchaId);
+        canchaMapper.copiarSobre(cancha, peticion);
+        validarHorario(cancha);
+        if (canchaRepository.existsByNombreAndCanchaIdNot(cancha.getNombre(), canchaId)) {
+            throw new NombreDuplicadoException("Ya existe una cancha con ese nombre");
+        }
+        return canchaMapper.aRespuesta(canchaRepository.save(cancha));
+    }
+
+    /**
+     * HU-05: activa o inactiva una cancha. No borra ninguna fila, ni la cancha ni sus
+     * bloqueos de mantenimiento.
+     */
+    @Transactional
+    public CanchaResponse cambiarEstado(Long canchaId, boolean activa) {
+        Cancha cancha = buscar(canchaId);
+        cancha.setActiva(activa);
+        return canchaMapper.aRespuesta(canchaRepository.save(cancha));
+    }
+
+    /**
+     * RN-07: el horario de atencion debe ser un rango coherente. Se valida aqui, antes de
+     * llegar a la base; ck_cancha_horario es la red de seguridad, no el mecanismo.
+     */
+    private void validarHorario(Cancha cancha) {
+        if (!cancha.getHoraCierre().isAfter(cancha.getHoraApertura())) {
+            throw new HorarioInvalidoException("horaCierre debe ser posterior a horaApertura");
+        }
+    }
+
+    private Cancha buscar(Long canchaId) {
+        return canchaRepository.findById(canchaId)
+                .orElseThrow(() -> new CanchaNoEncontradaException("La cancha no existe"));
     }
 
     private Cancha buscarVisible(Long canchaId) {
