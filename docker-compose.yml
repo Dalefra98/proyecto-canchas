@@ -16,7 +16,9 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      # pg_isready responde OK mientras aun corren los scripts de docker-entrypoint-initdb.d;
+      # la sonda solo pasa cuando el seed ya cargo el usuario ADMIN, o sea al final del init.
+      test: ["CMD-SHELL", "psql -U ${POSTGRES_USER} -d usuarios_db -tAc \"SELECT 1 FROM usuario WHERE rol = 'ADMIN' LIMIT 1\" | grep -q 1"]
       interval: 10s
       timeout: 5s
       retries: 5
