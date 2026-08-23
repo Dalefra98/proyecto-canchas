@@ -55,6 +55,27 @@ services:
       postgres:
         condition: service_healthy
 
+  ms-reservas:
+    build: ./backend/ms-reservas
+    container_name: canchas-ms-reservas
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/reservas_db
+      SPRING_DATASOURCE_USERNAME: reservas_user
+      SPRING_DATASOURCE_PASSWORD: reservas_pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      JWT_SECRET: ${JWT_SECRET}
+      # Nombre de contenedor: la llamada a ms-canchas es servidor a servidor.
+      MS_CANCHAS_URL: http://ms-canchas:8080
+      RESERVAS_MAX_ACTIVAS: ${RESERVAS_MAX_ACTIVAS}
+    ports:
+      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      - "8084:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ms-canchas:
+        condition: service_started
+
   adminer:
     image: adminer:4
     container_name: canchas-adminer

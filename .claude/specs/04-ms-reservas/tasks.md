@@ -73,7 +73,7 @@ de `backend/ms-usuarios`, y de `backend/ms-canchas` **solo** lo que autoriza T5.
 
 ---
 
-**Precondicion comun de T5 a T8 — `postgres` en estado `healthy`.** El healthcheck solo pasa
+**Precondicion comun de T5 a T9 — `postgres` en estado `healthy`.** El healthcheck solo pasa
 cuando el ultimo script del init ya cargo el seed. Antes de lanzar cualquier `curl`:
 
 ```powershell
@@ -377,3 +377,114 @@ la disponibilidad con el bloque `09:00`–`10:00` otra vez en `disponible: true`
 RN-03 se comprueba ademas cancelando con `<TOKEN_USUARIO>` una reserva creada por otro
 usuario: debe responder `403 SIN_PERMISO`. RN-04 y la precedencia C-02 se comprueban sobre
 una reserva ya ocurrida, que debe responder `409 RESERVA_PASADA`.
+
+---
+
+## T9 — Fallo de dependencia y prueba end-to-end de RN-02 / RN-05
+
+**Que hace.** **No escribe codigo.** Ejecuta y documenta con salida real dos escenarios que
+ninguna tarea anterior cubre completa, y deja la base limpia. Es la tarea de evidencia para
+la demo en vivo.
+
+**Cubre.** D-06 (fallo de dependencia), RN-02, RN-05, HU-01, HU-02, HU-05, y la evidencia de
+**independencia entre microservicios** exigida por el documento de alcance §4.2.
+
+### a) Fallo de dependencia (D-06)
+
+```powershell
+docker compose stop ms-canchas
+curl.exe -s -w "`n%{http_code}`n" "http://localhost:8084/api/reservas/disponibilidad?canchaId=1&fecha=<MANANA>" -H "Authorization: Bearer <TOKEN_USUARIO>"
+curl.exe -s -w "`n%{http_code}`n" -X POST http://localhost:8084/api/reservas -H "Authorization: Bearer <TOKEN_USUARIO>" -H "Content-Type: application/json" -d "{\"canchaId\":1,\"fecha\":\"<MANANA>\",\"horaInicio\":\"11:00\"}"
+curl.exe -s -w "`n%{http_code}`n" http://localhost:8084/api/reservas/mias -H "Authorization: Bearer <TOKEN_USUARIO>"
+curl.exe -s -w "`n%{http_code}`n" http://localhost:8084/api/reservas -H "Authorization: Bearer <TOKEN_ADMIN>"
+docker compose start ms-canchas
+docker compose ps
+curl.exe -s -w "`n%{http_code}`n" "http://localhost:8084/api/reservas/disponibilidad?canchaId=1&fecha=<MANANA>" -H "Authorization: Bearer <TOKEN_USUARIO>"
+```
+
+Esperado, en orden:
+
+| Llamada | Codigo | Cuerpo |
+|---|---|---|
+| Disponibilidad con `ms-canchas` caido | `500` | `{"codigo":"ERROR_INTERNO","mensaje":"No se pudo consultar el catalogo de canchas"}` |
+| Alta con `ms-canchas` caido | `500` | El mismo cuerpo; **no** se crea ninguna fila |
+| `GET /api/reservas/mias` | `200` | Historial normal: **no depende de `ms-canchas`** |
+| `GET /api/reservas` (ADMIN) | `200` | Listado global normal |
+| Disponibilidad tras `docker compose start` | `200` | Los 15 bloques otra vez |
+
+Las dos filas `200` son las importantes: demuestran que `ms-reservas` sigue operando
+parcialmente con una dependencia caida, que es la evidencia de independencia entre
+microservicios para la demo en vivo. Los dos `500` demuestran que el fallo se traduce al
+mensaje fijo de D-06 y nunca deja escapar la excepcion del cliente HTTP.
+
+Antes de repetir la disponibilidad se comprueba con `docker compose ps` que `ms-canchas`
+volvio a `Up`; si aparece como `starting`, se espera y se repite. El alta con la dependencia
+caida debe confirmarse tambien contra la base: la fila no existe.
+
+```powershell
+docker compose exec postgres psql -U reservas_user -d reservas_db -c "SELECT count(*) FROM reserva WHERE hora_inicio = '11:00'"
+```
+
+Esperado: `0`.
+
+### b) Ciclo completo RN-02 / RN-05 por API, no por SQL
+
+Cada paso va acompanado de la disponibilidad para ver el bloque cambiar de estado. Se usa
+el bloque `15:00`–`16:00` de `canchaId=1` en `<MANANA>`, libre hasta aqui.
+
+```powershell
+curl.exe -s -w "`n%{http_code}`n" "http://localhost:8084/api/reservas/disponibilidad?canchaId=1&fecha=<MANANA>" -H "Authorization: Bearer <TOKEN_USUARIO>"
+curl.exe -s -w "`n%{http_code}`n" -X POST http://localhost:8084/api/reservas -H "Authorization: Bearer <TOKEN_USUARIO>" -H "Content-Type: application/json" -d "{\"canchaId\":1,\"fecha\":\"<MANANA>\",\"horaInicio\":\"15:00\"}"
+curl.exe -s -w "`n%{http_code}`n" "http://localhost:8084/api/reservas/disponibilidad?canchaId=1&fecha=<MANANA>" -H "Authorization: Bearer <TOKEN_USUARIO>"
+curl.exe -s -w "`n%{http_code}`n" -X POST http://localhost:8084/api/reservas -H "Authorization: Bearer <TOKEN_USUARIO>" -H "Content-Type: application/json" -d "{\"canchaId\":1,\"fecha\":\"<MANANA>\",\"horaInicio\":\"15:00\"}"
+curl.exe -s -w "`n%{http_code}`n" -X PATCH http://localhost:8084/api/reservas/<ID_15>/cancelacion -H "Authorization: Bearer <TOKEN_USUARIO>"
+curl.exe -s -w "`n%{http_code}`n" "http://localhost:8084/api/reservas/disponibilidad?canchaId=1&fecha=<MANANA>" -H "Authorization: Bearer <TOKEN_USUARIO>"
+curl.exe -s -w "`n%{http_code}`n" -X POST http://localhost:8084/api/reservas -H "Authorization: Bearer <TOKEN_USUARIO>" -H "Content-Type: application/json" -d "{\"canchaId\":1,\"fecha\":\"<MANANA>\",\"horaInicio\":\"15:00\"}"
+```
+
+`<ID_15>` es el `id` devuelto por el primer `201`. Esperado, en orden:
+
+| Paso | Resultado |
+|---|---|
+| Disponibilidad inicial | `200`, bloque `15:00`–`16:00` con `disponible: true` |
+| Alta sobre bloque libre | `201`, `estado: "CONFIRMADA"`, `horaFin: "16:00"` |
+| Disponibilidad | `200`, el mismo bloque ahora en `disponible: false` (RN-02) |
+| Alta sobre el mismo bloque | `409 BLOQUE_OCUPADO` (RN-02) |
+| Cancelacion | `200`, `estado: "CANCELADA"` |
+| Disponibilidad | `200`, el bloque vuelve a `disponible: true` (RN-05) |
+| Alta sobre el mismo bloque | `201`, `estado: "CONFIRMADA"` — el bloque quedo realmente liberado (RN-05) |
+
+Todo el ciclo se ejecuta **por la API**, nunca con `INSERT` ni `UPDATE` en la base: lo que
+se prueba es la regla del servicio, no la del DDL.
+
+### c) Estado final documentado y limpieza
+
+Se documenta el estado de `reservas_db` antes de limpiar, para que la evidencia quede en la
+bitacora:
+
+```powershell
+docker compose exec postgres psql -U reservas_user -d reservas_db -c "SELECT id, usuario_id, cancha_id, fecha, hora_inicio, hora_fin, estado FROM reserva ORDER BY id"
+docker compose exec postgres psql -U reservas_user -d reservas_db -c "SELECT estado, count(*) FROM reserva GROUP BY estado"
+```
+
+Se espera que en la columna `estado` aparezcan **solo** `CONFIRMADA` y `CANCELADA`: ninguna
+fila con `FINALIZADA`, que es la comprobacion en base de la decision D-02.
+
+Limpieza de las reservas de prueba creadas en T7 y T9:
+
+```powershell
+docker compose exec postgres psql -U reservas_user -d reservas_db -c "DELETE FROM reserva"
+docker compose exec postgres psql -U reservas_user -d reservas_db -c "SELECT count(*) FROM reserva"
+```
+
+Esperado: `0`. La tabla `reserva` queda vacia, igual que la deja el seed.
+
+**No se toca `Padel 2` (`canchaId = 4`)**: la bitacora de la spec 03 la conserva a proposito
+por su horario distinto, y T6 la devolvio a `activa = true`. Antes de cerrar la tarea se
+confirma:
+
+```powershell
+curl.exe -s http://localhost:8083/api/canchas/4 -H "Authorization: Bearer <TOKEN_ADMIN>"
+```
+
+Esperado: `Padel 2`, `08:00`–`21:00`, `activa: true`.
