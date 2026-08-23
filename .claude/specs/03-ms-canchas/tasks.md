@@ -382,3 +382,15 @@ Esperado: el documento OpenAPI lista los ocho endpoints con `canchaId`, `horaApe
 `400 DATOS_INVALIDOS` (405 traducido); el `Content-Type` invalido tambien
 `400 DATOS_INVALIDOS` (415 traducido); y la consulta SQL confirma que las tres canchas del
 seed quedaron con su horario y su estado originales.
+
+**Limpieza final de datos de prueba.** Los bloqueos `2` y `3` que dejo T7 se conservan
+durante T8 —el documento OpenAPI y las pruebas de esta tarea los usan como datos reales— y
+se borran al terminar, para devolver la base al estado del seed. La tabla
+`bloqueo_mantenimiento` nace vacia en `05-seed.sql`, asi que debe quedar sin filas:
+
+```powershell
+docker compose exec postgres psql -U canchas_user -d canchas_db -c "DELETE FROM bloqueo_mantenimiento WHERE bloqueo_id IN (2, 3)"
+docker compose exec postgres psql -U canchas_user -d canchas_db -c "SELECT bloqueo_id, cancha_id, fecha FROM bloqueo_mantenimiento ORDER BY bloqueo_id"
+```
+
+Esperado: el `DELETE` reporta `DELETE 2` y el `SELECT` devuelve `(0 rows)`.
