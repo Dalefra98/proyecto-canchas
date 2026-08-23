@@ -63,11 +63,24 @@ Responsable: DAVID ARISTEGA
 Total de iteraciones: 7
 Tiempo invertido: ____
 
+**Hallazgos de la spec 02.** Cuatro, ninguno previsto en el diseño:
+
+| # | Hallazgo | Alcance | Dónde quedó resuelto |
+|---|---|---|---|
+| 1 | `repo.maven.apache.org` corta el handshake TLS al descargar el árbol completo de dependencias. Dos corridas seguidas de `mvn` fallaron en artefactos distintos, señal de red y no de `pom.xml` | Entorno — specs 03 a 05 | `CLAUDE.md` §1: el comando oficial monta el volumen `m2repo` en `/root/.m2` |
+| 2 | El builder de BuildKit no resuelve DNS (`Unknown host repo.maven.apache.org`) y `docker compose build` no monta volúmenes, así que `dependency:go-offline` redescargaba todo y fallaba | Entorno — specs 03 a 05 | `CLAUDE.md` §1: patrón oficial de `Dockerfile` sin `go-offline` y con `--mount=type=cache,target=/root/.m2` |
+| 3 | Spring Initializr ya solo entrega la rama 4.x, donde el starter web se renombra y llega Spring Security 7, mientras `springdoc-openapi` solo existe hasta 2.8.6 sobre Spring Framework 6. Como la documentación OpenAPI es entregable obligatorio, se fijó Spring Boot 3.5.3 corrigiendo el `<parent>` a mano | Decisión — los cuatro microservicios | `CLAUDE.md` §3 y `design.md` §8 de esta spec |
+| 4 | El 405 se traduce a 400 `DATOS_INVALIDOS` solo cuando la petición pasa la cadena de seguridad. Sin token, una ruta protegida responde 401 antes de llegar a Spring MVC: el manejador es correcto, lo que manda es el orden de las capas | Técnico — esta spec, útil para las demás | Verificado en T8 con y sin token ADMIN |
+
 **Observación:** las correcciones de más peso no fueron de código sino de versiones y de
-entorno: Initializr dejó de ofrecer Spring Boot 3.x, y las dos fallas de red (TLS en el host,
-DNS dentro del build) obligaron a cambiar los comandos oficiales del proyecto. Las tres
-compuertas volvieron a servir para lo mismo: la IA propone algo plausible pero incompleto, y
-el trabajo real está en detectar lo que falta antes de que llegue al código.
+entorno. Los hallazgos 1 y 2 obligaron a cambiar los comandos oficiales del proyecto, y el 3
+a fijar una versión que ninguna spec había decidido. Las tres compuertas volvieron a servir
+para lo mismo: la IA propone algo plausible pero incompleto, y el trabajo real está en
+detectar lo que falta antes de que llegue al código.
+
+**Estado de la spec 02: cerrada.** Ocho tareas ejecutadas y verificadas con salida real; los
+cuatro endpoints congelados de `/api/usuarios` responden con los nombres y códigos del
+contrato.
 
 ---
 
@@ -79,8 +92,11 @@ el trabajo real está en detectar lo que falta antes de que llegue al código.
   `pg_isready` sino un `SELECT` del usuario ADMIN del seed, es decir del último script
   del init; `ms-usuarios` arrancó siempre con las tablas ya creadas.
 - `repo.maven.apache.org` corta el handshake TLS al descargar el árbol completo de
-  dependencias. El comando oficial de compilación monta el volumen `m2repo` en
-  `/root/.m2` para cachearlas, y el `Dockerfile` usa cache mount de BuildKit porque
-  `docker compose build` no monta volúmenes. Ambos quedaron en `CLAUDE.md` §1.
+  dependencias, y falla en un artefacto distinto en cada intento. El comando oficial de
+  compilación monta el volumen `m2repo` en `/root/.m2` para cachearlas (`CLAUDE.md` §1).
+- El builder de BuildKit no resuelve DNS hacia `repo.maven.apache.org` y
+  `docker compose build` no monta volúmenes, así que la caché `m2repo` no aplica dentro
+  del build de imagen. El `Dockerfile` oficial no usa `dependency:go-offline` y compila
+  con `--mount=type=cache,target=/root/.m2` (`CLAUDE.md` §1).
 - En Git Bash, `psql -f /docker-entrypoint-initdb.d/...` requiere `MSYS_NO_PATHCONV=1`
-  para que no se traduzca la ruta.
+  para que no se traduzca la ruta. Lo mismo aplica a `docker run -w /app`.
