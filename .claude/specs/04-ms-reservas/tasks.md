@@ -488,3 +488,51 @@ curl.exe -s http://localhost:8083/api/canchas/4 -H "Authorization: Bearer <TOKEN
 ```
 
 Esperado: `Padel 2`, `08:00`–`21:00`, `activa: true`.
+
+---
+
+## T10 — `NoResourceFoundException` a `404 NO_ENCONTRADO` en los tres microservicios
+
+**Que hace.** Corrige el asunto abierto **A-02** del requirements §6.3: hoy una peticion
+autenticada a una ruta que no existe responde `500 ERROR_INTERNO`, porque
+`NoResourceFoundException` no tiene manejador propio y cae en la red de seguridad
+`@ExceptionHandler(Exception.class)`. Debe responder `404 NO_ENCONTRADO`.
+
+Agrega el manejador de `NoResourceFoundException` al `ManejadorExcepciones` de
+**`ms-usuarios`, `ms-canchas` y `ms-reservas`**, con el codigo `NO_ENCONTRADO` del contrato,
+y la propiedad `spring.mvc.throw-exception-if-no-handler-found` —o su equivalente segun la
+version de Spring Boot— donde haga falta para que la excepcion llegue al `@RestControllerAdvice`.
+
+**Por que va al final.** Toca dos microservicios ya cerrados (specs 02 y 03) y es un cambio
+transversal. Hacerlo antes mezclaria esa correccion con la implementacion de `ms-reservas` y
+ensuciaria la trazabilidad de la spec (decision del responsable, 23/08/2026).
+
+**Cubre.** A-02 del requirements §6.3. No cubre ninguna HU ni RN nueva: es coherencia del
+formato de error (HU-09 y su equivalente en las specs 02 y 03).
+
+**Alcance exacto.** Solo el manejador nuevo y, si aplica, la propiedad de configuracion. **No
+se toca** ningun endpoint, entidad, DTO, mapper, repositorio, regla de negocio ni la matriz
+de rutas de ninguno de los tres servicios.
+
+**Verificacion.**
+
+```powershell
+docker compose up -d --build ms-usuarios ms-canchas ms-reservas
+curl.exe -s -w "`n%{http_code}`n" http://localhost:8082/api/ruta-que-no-existe -H "Authorization: Bearer <TOKEN_ADMIN>"
+curl.exe -s -w "`n%{http_code}`n" http://localhost:8083/api/ruta-que-no-existe -H "Authorization: Bearer <TOKEN_ADMIN>"
+curl.exe -s -w "`n%{http_code}`n" http://localhost:8084/api/ruta-que-no-existe -H "Authorization: Bearer <TOKEN_ADMIN>"
+```
+
+Esperado en los tres puertos: `404` con
+`{"codigo":"NO_ENCONTRADO","mensaje":"..."}`, nunca `500`.
+
+**Regresion obligatoria.** Despues del cambio, las rutas que si existen deben seguir
+respondiendo igual en los tres servicios:
+
+```powershell
+curl.exe -s -o NUL -w "%{http_code}`n" http://localhost:8083/api/canchas -H "Authorization: Bearer <TOKEN_ADMIN>"
+curl.exe -s -o NUL -w "%{http_code}`n" http://localhost:8084/api/reservas -H "Authorization: Bearer <TOKEN_ADMIN>"
+curl.exe -s -o NUL -w "%{http_code}`n" http://localhost:8084/api/reservas -H "Authorization: Bearer <TOKEN_USUARIO>"
+```
+
+Esperado: `200`, `200` y `403`.

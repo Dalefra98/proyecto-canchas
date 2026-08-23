@@ -19,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class CanchaService {
 
     private static final String ROL_ADMIN = "ROLE_ADMIN";
+    // Llamador interno (spec 04, decision D-01): ve el catalogo completo como el ADMIN, pero
+    // la cadena de seguridad le sigue negando toda escritura con 403 SIN_PERMISO.
+    private static final String ROL_SERVICIO = "ROLE_SERVICIO";
 
     private final CanchaRepository canchaRepository;
     private final CanchaMapper canchaMapper;
@@ -35,7 +38,9 @@ public class CanchaService {
      */
     @Transactional(readOnly = true)
     public List<CanchaResponse> listar() {
-        List<Cancha> canchas = esAdmin() ? canchaRepository.findAll() : canchaRepository.findByActivaTrue();
+        List<Cancha> canchas = veCatalogoCompleto()
+                ? canchaRepository.findAll()
+                : canchaRepository.findByActivaTrue();
         return canchas.stream().map(canchaMapper::aRespuesta).toList();
     }
 
@@ -110,19 +115,23 @@ public class CanchaService {
     private Cancha buscarVisible(Long canchaId) {
         Cancha cancha = canchaRepository.findById(canchaId)
                 .orElseThrow(() -> new CanchaNoEncontradaException("La cancha no existe"));
-        if (!cancha.isActiva() && !esAdmin()) {
+        if (!cancha.isActiva() && !veCatalogoCompleto()) {
             throw new CanchaNoEncontradaException("La cancha no existe");
         }
         return cancha;
     }
 
-    private boolean esAdmin() {
+    /**
+     * Quien ve el catalogo completo, inactivas incluidas: el ADMIN y el llamador interno con
+     * rol SERVICIO. El USUARIO solo ve las activas (decision P-05, design D-05).
+     */
+    private boolean veCatalogoCompleto() {
         Authentication autenticacion = SecurityContextHolder.getContext().getAuthentication();
         if (autenticacion == null) {
             return false;
         }
         return autenticacion.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch(ROL_ADMIN::equals);
+                .anyMatch(autoridad -> ROL_ADMIN.equals(autoridad) || ROL_SERVICIO.equals(autoridad));
     }
 }

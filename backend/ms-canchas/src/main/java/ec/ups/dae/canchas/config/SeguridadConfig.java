@@ -43,8 +43,11 @@ public class SeguridadConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/canchas/*/estado").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/canchas/*/bloqueos").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/canchas/*/bloqueos/*").hasRole("ADMIN")
-                        // Lectura del catalogo y de los bloqueos: ADMIN y USUARIO. El filtrado
-                        // de canchas inactivas para el USUARIO lo hace el servicio (P-05).
+                        // Lectura del catalogo y de los bloqueos: ADMIN, USUARIO y el llamador
+                        // interno con rol SERVICIO (spec 04, D-01). authenticated() ya los cubre a
+                        // los tres; la escritura de arriba exige ADMIN, asi que un token SERVICIO
+                        // recibe 403 SIN_PERMISO. El filtrado de canchas inactivas para el USUARIO
+                        // lo hace el servicio (P-05).
                         .requestMatchers(HttpMethod.GET, "/api/canchas").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/canchas/*").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/canchas/*/bloqueos").authenticated()

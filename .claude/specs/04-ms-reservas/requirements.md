@@ -537,6 +537,31 @@ regla.
 Queda escrito aqui de forma explicita para la defensa del proyecto: la diferencia con el
 PDF es deliberada y esta justificada, no es un descuido.
 
+### 6.3 A-02 — Una ruta inexistente responde `500`, no `404` (asunto abierto)
+
+Detectado al verificar T4 el 23/08/2026 con salida real: una peticion **autenticada** a una
+ruta que no existe no llega a ningun controlador, Spring lanza `NoResourceFoundException` y
+la red de seguridad `@ExceptionHandler(Exception.class)` la convierte en
+`500 ERROR_INTERNO`. Deberia ser `404 NO_ENCONTRADO`.
+
+No es un defecto que introduzca esta spec: `ms-canchas`, ya cerrado, hace exactamente lo
+mismo, y se comprobo en la misma verificacion. Es un hueco comun a los tres microservicios,
+heredado del `ManejadorExcepciones` que las specs 02 y 03 congelaron.
+
+**Decision del responsable (23/08/2026):** se corrige — una ruta inexistente debe responder
+`404 NO_ENCONTRADO` en los tres servicios — pero **no ahora**. Motivo: toca dos servicios ya
+cerrados y es un cambio transversal; hacerlo dentro de la implementacion de `ms-reservas`
+mezclaria ambas cosas y ensuciaria la trazabilidad de la spec.
+
+Queda como **tarea T10 de `tasks.md`**, la ultima, despues de T9. Alcance: agregar el
+manejador de `NoResourceFoundException` al `ManejadorExcepciones` de `ms-usuarios`,
+`ms-canchas` y `ms-reservas`, con la propiedad
+`spring.mvc.throw-exception-if-no-handler-found` o su equivalente segun la version.
+
+Hasta que T10 se ejecute, el comportamiento actual sigue vigente y esta documentado aqui a
+proposito. No afecta a las cinco rutas congeladas de `ms-reservas`: todas tendran handler al
+terminar T8.
+
 ## 7. Fuera de alcance de esta spec
 
 - `ms-usuarios` (ya implementado) y `ms-reportes` (spec 05).
