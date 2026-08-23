@@ -23,6 +23,22 @@ services:
       timeout: 5s
       retries: 5
 
+  ms-usuarios:
+    build: ./backend/ms-usuarios
+    container_name: canchas-ms-usuarios
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/usuarios_db
+      SPRING_DATASOURCE_USERNAME: usuarios_user
+      SPRING_DATASOURCE_PASSWORD: usuarios_pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   adminer:
     image: adminer:4
     container_name: canchas-adminer

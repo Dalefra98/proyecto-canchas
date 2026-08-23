@@ -34,8 +34,9 @@ No existen JDK, Maven, Node, npm ni psql en el host. **Nunca ejecutes** `mvn`, `
 Comandos permitidos:
 
 ```bash
-# Compilar un microservicio
-docker run --rm -v "${PWD}:/app" -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
+# Compilar un microservicio (el volumen m2repo cachea las dependencias entre corridas;
+# sin el, la descarga completa desde repo.maven.apache.org corta el handshake TLS)
+docker run --rm -v "${PWD}:/app" -v m2repo:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
 
 # Dependencias de un microfrontend
 docker run --rm -v "${PWD}:/app" -w /app node:20-alpine npm install
@@ -49,6 +50,30 @@ docker compose logs --tail=50 <servicio>
 # Base de datos
 docker compose exec postgres psql -U <usuario> -d <base> -c "<sql>"
 ```
+
+**Dockerfile — patrón oficial para los cuatro microservicios.** Las specs 03, 04 y 05 lo
+copian tal cual, cambiando solo el nombre del `.jar`. No se usa `dependency:go-offline`: esa
+capa descarga todo el árbol de dependencias sin caché y es la que falla con esta red.
+
+```dockerfile
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN --mount=type=cache,target=/root/.m2 mvn -B clean package -DskipTests
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+RUN addgroup -S spring && adduser -S spring -G spring
+COPY --from=build /app/target/<artifactId>-0.0.1-SNAPSHOT.jar app.jar
+USER spring
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+El `--mount=type=cache,target=/root/.m2` es el equivalente del volumen `m2repo` dentro del
+build de imagen: `docker compose build` no monta volúmenes, así que sin él cada build
+redescarga todo.
 
 Sistema operativo del desarrollador: **Windows con PowerShell**. Usa `curl.exe`, no `curl`.
 Para copiar archivos: `Copy-Item`, no `cp`.
@@ -86,6 +111,11 @@ reservas recurrentes, torneos o ligas, app móvil nativa, reportes BI o exportac
 
 ### Backend
 - Java 21, Spring Boot, Maven.
+- **Versión fija para los cuatro microservicios: Spring Boot 3.5.3** (parent
+  `spring-boot-starter-parent`), con `springdoc-openapi-starter-webmvc-ui` 2.8.6 y
+  `io.jsonwebtoken` (jjwt) 0.12.6. Spring Initializr ya solo entrega la rama 4.x, así que el
+  `<parent>` se corrige a mano. Ninguna spec vuelve a decidir estas versiones: si hay que
+  cambiarlas, se cambia aquí primero y se avisa al grupo.
 - Cuatro microservicios: `ms-usuarios`, `ms-canchas`, `ms-reservas`, `ms-reportes`.
 - Capas: `controller` -> `service` -> `repository` -> `entity`. DTOs separados de entidades,
   con mapper **manual**.

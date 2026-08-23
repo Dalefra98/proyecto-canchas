@@ -299,6 +299,20 @@ Imagen: build multi-etapa. Etapa de compilacion con `maven:3.9-eclipse-temurin-2
 de ejecucion con una imagen JRE 21. El esqueleto se descarga de Spring Initializr por URL;
 nunca se ejecuta `mvn` en el host (§2.2 del requirements).
 
+### Version de Spring Boot: 3.5.3 (fijada el 23/08/2026)
+
+Decidida durante T1 y aplicable a **los cuatro microservicios**; quedo escrita en
+`CLAUDE.md` §3 para que las specs 03, 04 y 05 no la vuelvan a decidir.
+
+Motivo: Spring Initializr ya solo ofrece la rama 4.x (`4.0.8`, `4.1.1`), y en Boot 4 el
+starter web pasa a llamarse `spring-boot-starter-webmvc` y arrastra Spring Security 7. La
+ultima version publicada de `springdoc-openapi-starter-webmvc-ui` es **2.8.6**, construida
+para Spring Framework 6, es decir para Boot 3.x. Como la documentacion OpenAPI es
+**entregable obligatorio del proyecto (E-03 de la rubrica, E-06 de esta spec)**, se elige la
+combinacion probada: **Boot 3.5.3 + springdoc 2.8.6 + Spring Security 6 + jjwt 0.12.6**. El
+`<parent>` del `pom.xml` se corrige a mano sobre el esqueleto descargado; el esqueleto sigue
+saliendo de Initializr por URL, nunca de `mvn` en el host.
+
 ### Dependencias
 
 | Dependencia | Origen |

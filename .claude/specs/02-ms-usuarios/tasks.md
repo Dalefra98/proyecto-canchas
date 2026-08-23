@@ -10,10 +10,12 @@ Todos los comandos se ejecutan en PowerShell desde la raiz del repositorio
 (`proyecto-canchas`). En esta maquina no hay JDK, Maven ni psql: todo pasa por Docker
 (`CLAUDE.md` §1).
 
-Atajo usado en las tareas siguientes — compilar el microservicio:
+Atajo usado en las tareas siguientes — compilar el microservicio. El volumen `m2repo`
+montado en `/root/.m2` cachea las dependencias entre corridas; sin el, la descarga completa
+desde `repo.maven.apache.org` corta el handshake TLS (`CLAUDE.md` §1):
 
 ```powershell
-docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
+docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -v m2repo:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
 ```
 
 ---
@@ -37,7 +39,7 @@ datasource, `ddl-auto=validate`, `server.port=8080`, `jwt.secret` desde `JWT_SEC
 **Verificacion.**
 
 ```powershell
-docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
+docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -v m2repo:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
 docker compose up -d --build ms-usuarios
 docker compose logs --tail=50 ms-usuarios
 ```
@@ -59,7 +61,7 @@ No modifica ningun archivo de `infra/postgres/`.
 **Verificacion.**
 
 ```powershell
-docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
+docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -v m2repo:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
 docker compose up -d --build ms-usuarios
 docker compose logs --tail=50 ms-usuarios
 ```
@@ -86,7 +88,7 @@ design §7, incluidos `HttpRequestMethodNotSupportedException` y
 **Verificacion.**
 
 ```powershell
-docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
+docker run --rm -v "${PWD}/backend/ms-usuarios:/app" -v m2repo:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
 docker compose up -d --build ms-usuarios
 docker compose logs --tail=50 ms-usuarios
 ```
