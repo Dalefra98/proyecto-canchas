@@ -27,7 +27,7 @@ Cambiar un nombre aquí obliga a revisar todas las specs que ya lo usan.
 | Nombre de usuario | `nombre` | string | ms-usuarios |
 | Correo de acceso | `email` | string | ms-usuarios |
 | Contraseña | `password` | string — **solo en request, NUNCA en respuesta** | ms-usuarios |
-| Rol de usuario | `rol` | `ADMIN` \| `USUARIO` | ms-usuarios |
+| Rol de usuario | `rol` | `ADMIN` \| `USUARIO` \| `SERVICIO` | ms-usuarios |
 | Usuario activo | `activo` | boolean | ms-usuarios |
 | Token de sesión | `token` | string | ms-usuarios |
 | Usuario de la sesión | `usuario` | objeto `UsuarioResponse` | ms-usuarios |
@@ -50,6 +50,15 @@ Notas de uso:
   texto plano y ninguna respuesta serializa este campo.
 - Un bloqueo de mantenimiento se representa con `bloqueoId`, `canchaId`, `fecha`,
   `horaInicio`, `horaFin` y `motivo`.
+- `rol` admite un tercer valor, `SERVICIO`, que **nunca** se persiste en `usuarios_db` ni
+  aparece en ninguna respuesta de la API. Es el rol de un **token de servicio**: un JWT
+  HS256 firmado con el mismo `JWT_SECRET`, con `rol = SERVICIO`, **sin** claim `sub` y con
+  `exp` de 5 minutos, que un microservicio emite para llamar a otro. Un token `SERVICIO`
+  solo habilita operaciones de **lectura** (`GET`) y recibe la vista completa del recurso,
+  incluidas las canchas con `activa = false`. En cualquier ruta de escritura (`POST`,
+  `PUT`, `PATCH`, `DELETE`) responde `403 SIN_PERMISO`. Los roles de las tablas de rutas
+  siguen refiriéndose solo a `ADMIN` y `USUARIO`: `SERVICIO` no sustituye a ninguno de los
+  dos, se suma como consumidor interno de las rutas de lectura.
 
 ## Payloads congelados
 
@@ -158,6 +167,7 @@ Notas de las rutas de canchas:
 | Bloque ya reservado (RN-02) | 409 | `BLOQUE_OCUPADO` |
 | Límite de reservas activas (RN-06) | 409 | `LIMITE_RESERVAS` |
 | Reserva ya ocurrida (RN-04) | 409 | `RESERVA_PASADA` |
+| Reserva que ya no está `CONFIRMADA` | 409 | `RESERVA_NO_CANCELABLE` |
 | Error no previsto en el servidor | 500 | `ERROR_INTERNO` |
 
 ## Contrato Module Federation
@@ -190,3 +200,5 @@ Props que el shell entrega a todo remote:
 | 23/08/2026 | Se agrega el código de error `BLOQUEO_DUPLICADO` (HTTP 409) por la restricción `uq_bloqueo_franja`; `POST /api/canchas/{canchaId}/bloqueos` suma `409` | David Aristega | 03-ms-canchas |
 | 23/08/2026 | `GET /api/canchas/{canchaId}/bloqueos` acepta el parámetro opcional `fecha` (`AAAA-MM-DD`) y suma `400`, para que ms-reservas calcule la disponibilidad de un día sin traer todos los bloqueos | David Aristega | 03-ms-canchas |
 | 23/08/2026 | `GET /api/canchas` y `GET /api/canchas/{canchaId}` filtran por rol sin parámetro: el USUARIO solo ve canchas `activa = true` y recibe `404` en una inactiva; el ADMIN ve todas | David Aristega | 03-ms-canchas |
+| 23/08/2026 | `rol` admite el tercer valor `SERVICIO` para el token de servicio de las llamadas internas entre microservicios (JWT HS256 con el mismo `JWT_SECRET`, sin `sub`, `exp` de 5 minutos): solo lectura y con vista completa del catálogo; en cualquier ruta de escritura responde `403 SIN_PERMISO`. Resuelve el asunto A-01 que dejó abierto la spec 03 y obliga a modificar el filtro de `ms-canchas` | David Aristega | 03-ms-canchas, 04-ms-reservas |
+| 23/08/2026 | Se agrega el código de error `RESERVA_NO_CANCELABLE` (HTTP 409) para cancelar una reserva que ya no está `CONFIRMADA`; `PATCH /api/reservas/{id}/cancelacion` ya declaraba `409` | David Aristega | 04-ms-reservas |
