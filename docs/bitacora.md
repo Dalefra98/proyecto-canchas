@@ -25,10 +25,20 @@ vacíos; se detectó al verificar tamaños en bytes, no a simple vista en el edi
 
 ## Spec 01 — Modelo de datos y contratos
 
-Responsable: ____________________
+Responsable: DAVID ARISTEGA
 
 | N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
 |---|---|---|---|---|---|
-| 1 | | C1 | | | |
-| 2 | | C2 | | | |
-| 3 | | C3 | | | |
+| 1 | 23/08/2026 | C1 | Generar requirements.md del modelo de datos y los contratos | Sí, tras responder los supuestos | La IA listo 7 datos faltantes en vez de inventarlos; se congelaron los campos JSON de usuario, cancha y bloqueo, las rutas REST, los 5 archivos DDL numerados, `RESERVAS_MAX_ACTIVAS` y BCrypt |
+| 2 | 23/08/2026 | C2 | Generar design.md con modelo, DTOs, endpoints y excepciones | Sí, tras 6 correcciones | Se congelaron los DTOs de disponibilidad y reportes que la IA dejaba pendientes, se agrego `GET /api/canchas/{canchaId}`, se amplio el rol de los bloqueos a USUARIO, se creo el codigo `EMAIL_DUPLICADO`, se congelo `LoginResponse` y se corrigio la longitud de BCrypt (60, no 72) |
+| 3 | 23/08/2026 | C2 | Eliminar las tablas duplicadas del contrato en requirements.md y design.md | Sí | Regla nueva del proyecto: `docs/contratos/README.md` es la unica fuente de verdad; ninguna spec vuelve a copiar campos, rutas ni codigos de error |
+| 4 | 23/08/2026 | C3 | Generar tasks.md con 5 a 8 tareas verificables | Sí, tras 3 correcciones | `psql` sin `-d` (mismo error de la seccion 1), una imagen de node solo para hacer `cat`, y faltaba una verificacion final con los 5 scripts montados a la vez: se agrego como T6 parte A |
+| 5 | 23/08/2026 | C3 | Ejecutar T1 a T7 de una en una | Sí | Ninguna correccion de contenido. Dos hallazgos de entorno: `pg_isready` da falso positivo durante el init de Postgres, y en Git Bash `psql -f /docker-entrypoint-initdb.d/...` exige `MSYS_NO_PATHCONV=1` |
+
+Total de iteraciones: 5
+Tiempo invertido: 1 HORA
+
+**Observación:** las tres compuertas sirvieron para lo mismo que en la sección 1: la IA
+propone algo razonable pero incompleto, y el trabajo real esta en detectar lo que falta antes
+de dejarla escribir. Los 7 datos faltantes de C1 y los DTOs pendientes de C2 habrian llegado
+al codigo como nombres inventados si nadie los revisaba.
