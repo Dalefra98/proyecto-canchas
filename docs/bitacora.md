@@ -84,6 +84,40 @@ contrato.
 
 ---
 
+## Spec 03 — ms-canchas
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 23/08/2026 | C1 | Generar requirements.md de ms-canchas | Sí, tras responder 6 preguntas | La IA se detuvo en 6 datos faltantes, dos de ellos contradicciones reales entre el contrato congelado y el DDL: nombre de cancha duplicado y bloqueo duplicado tenían restricción `UNIQUE` en la base pero ningún `409` en el contrato. Se crearon `NOMBRE_DUPLICADO` y `BLOQUEO_DUPLICADO`, se agregó el parámetro opcional `fecha` a la ruta de bloqueos y se decidió el filtrado del catálogo por rol |
+| 2 | 23/08/2026 | C1 | Resolver el solapamiento parcial de bloqueos y la decisión C-01 | Sí | La IA había dejado el solapamiento parcial como supuesto sin validar (S-10) y había derivado C-01 a la spec 04. El responsable decidió ambas aquí: el solape parcial **sí** se valida, en la capa de servicio y sin tocar el DDL; y `ms-reservas` consultará con credenciales de servicio, quedando el mecanismo como asunto abierto A-01 |
+| 3 | 23/08/2026 | C2 | Generar design.md con modelo, DTOs, endpoints y excepciones | Sí, tras 1 corrección | El flujo de alta de bloqueo no decía qué pasa si la cancha está **inactiva**. Se decidió permitirlo —una cancha inactiva puede estar justamente en mantenimiento— y quedó como decisión D-16 |
+| 4 | 23/08/2026 | C3 | Generar tasks.md con 5 a 8 tareas verificables | Sí, tras 1 corrección | El tasks.md decía "crea" el Dockerfile, el manejador de excepciones y el filtro de token. Se cambió a **copiar** los cinco archivos desde `ms-usuarios`: si dos servicios validan el mismo JWT con código distinto, la diferencia solo aparece en la integración |
+| 5 | 23/08/2026 | C3 | Ejecutar T1 a T4 (esqueleto, entidades, DTOs y seguridad) | Sí, tras 2 correcciones | Spring Initializr rechazó `3.5.3` con `compatibility range is >=4.0.0`: se descargó con `4.0.8` y se corrigió el `<parent>` a mano, como ya preveía `CLAUDE.md` §3. Los `@Pattern` de los DTOs fallaron con `illegal escape character` porque el heredoc del shell colapsó las barras dobles; se reescribieron con clases `[0-9]` |
+| 6 | 23/08/2026 | C3 | Ejecutar T5 a T8 (catálogo, escritura, bloqueos y OpenAPI) | Sí | 4 ejecuciones verificadas con salida real: filtrado por rol con `404` indistinguible en cancha inactiva, `409 NOMBRE_DUPLICADO` en alta y edición, y las cuatro reglas del bloqueo —solape parcial, fuera de horario, fecha pasada y cancha inactiva permitida—. Sin correcciones de contenido |
+
+Total de iteraciones: 6
+Tiempo invertido: ____
+
+**Observación:** el aporte de las compuertas en esta spec fue distinto al de las anteriores.
+No aparecieron datos inventados, sino **huecos entre documentos ya congelados**: el DDL
+prohibía cosas que el contrato no sabía responder, y el diseño describía un flujo sin decir
+qué pasa en un estado que el propio sistema permite (cancha inactiva). Ninguno de los tres
+lo habría detectado por separado; salieron de compararlos entre sí.
+
+**Estado de la spec 03: cerrada.** Ocho tareas ejecutadas y verificadas con salida real; los
+ocho endpoints congelados de `/api/canchas` responden con los nombres y códigos del
+contrato, y el documento OpenAPI los declara con sus códigos de error.
+
+**Dato que se conserva a propósito:** la cancha `Padel 2` (`canchaId = 4`, `08:00`–`21:00`)
+creada durante T6 **no es basura de pruebas** y no debe borrarse: su horario distinto al de
+las tres canchas del seed sirve en la spec 04 para comprobar que la disponibilidad respeta
+el horario de atención de cada cancha y no uno fijo. La tabla `bloqueo_mantenimiento` sí se
+dejó vacía, como en el seed.
+
+---
+
 **Hallazgos de entorno (aplican a todas las specs):**
 - `pg_isready` responde OK mientras Postgres aun ejecuta los scripts de
   `docker-entrypoint-initdb.d`. El `healthcheck` del compose da un falso positivo,

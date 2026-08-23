@@ -383,6 +383,12 @@ Esperado: el documento OpenAPI lista los ocho endpoints con `canchaId`, `horaApe
 `400 DATOS_INVALIDOS` (415 traducido); y la consulta SQL confirma que las tres canchas del
 seed quedaron con su horario y su estado originales.
 
+**`Padel 2` (`canchaId = 4`) se conserva a proposito. No la borres.** La creo el caso 1 de
+T6 y **no es basura de pruebas**: su horario `08:00`–`21:00` es distinto al `07:00`–`22:00`
+de las tres canchas del seed, y la spec 04 lo necesita para comprobar que la disponibilidad
+respeta el horario de atencion de **cada** cancha y no uno fijo. Cualquier limpieza
+posterior debe dejarla intacta.
+
 **Limpieza final de datos de prueba.** Los bloqueos `2` y `3` que dejo T7 se conservan
 durante T8 —el documento OpenAPI y las pruebas de esta tarea los usan como datos reales— y
 se borran al terminar, para devolver la base al estado del seed. La tabla
