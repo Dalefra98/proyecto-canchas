@@ -18,6 +18,60 @@ desde `repo.maven.apache.org` corta el handshake TLS (`CLAUDE.md` §1):
 docker run --rm -v "${PWD}/backend/ms-canchas:/app" -v m2repo:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
 ```
 
+## Regla de reutilizacion desde `ms-usuarios` (T1, T3 y T4)
+
+Cinco archivos **se copian** desde `backend/ms-usuarios`, no se reescriben desde cero. Si
+los dos servicios validan el mismo JWT con codigo distinto, la diferencia solo aparece en la
+integracion y es dificil de rastrear (design D-15). Se copian con `Copy-Item`, nunca `cp`
+(`CLAUDE.md` §1).
+
+| Archivo origen | Destino | Tarea | Adaptacion permitida |
+|---|---|---|---|
+| `backend/ms-usuarios/Dockerfile` | `backend/ms-canchas/Dockerfile` | T1 | Solo el nombre del `.jar`: `ms-canchas-0.0.1-SNAPSHOT.jar` |
+| `config/FiltroToken.java` | `config/FiltroToken.java` | T4 | Solo el paquete y los `import` |
+| `service/TokenService.java` | `service/TokenService.java` | T4 | Paquete e `import`, **mas** quitar lo que no aplica (ver abajo) |
+| `config/SeguridadConfig.java` | `config/SeguridadConfig.java` | T4 | Paquete e `import`, **mas** la matriz de rutas y quitar el `PasswordEncoder` (ver abajo) |
+| `exception/ManejadorExcepciones.java` | `exception/ManejadorExcepciones.java` | T3 | Paquete e `import`, **mas** sustituir las excepciones de dominio (ver abajo) |
+
+`FiltroToken` y el `Dockerfile` son copia literal salvo lo indicado. Los otros tres se copian
+como punto de partida y se adaptan **solo** en lo siguiente, dejando intacto todo lo demas:
+
+- **`TokenService`**: se conservan `validar`, `usuarioIdDe` y `rolDe` **identicos, sin tocar
+  una linea**, porque son la validacion compartida. Se eliminan el metodo `emitir`, el
+  `import` de la entidad `Usuario` y el parametro `jwt.vigencia-horas` del constructor:
+  `ms-canchas` no emite tokens (design §5). La construccion de la `SecretKey` a partir de
+  `jwt.secret` se conserva tal cual.
+- **`SeguridadConfig`**: se conservan la cadena `STATELESS`, CSRF/`httpBasic`/`formLogin`
+  desactivados, el `permitAll()` de las tres rutas de springdoc, el
+  `addFilterBefore(filtroToken, ...)` y los dos manejadores que escriben
+  `401 NO_AUTENTICADO` y `403 SIN_PERMISO` como `ErrorResponse`. Se reemplaza la matriz de
+  `requestMatchers` por la tabla del design §5 (las ocho rutas de canchas: `GET` a cualquier
+  rol, escritura con `hasRole("ADMIN")`) y se **elimina** el `@Bean PasswordEncoder`:
+  `ms-canchas` no maneja contrasenas.
+- **`ManejadorExcepciones`**: se conservan la estructura, el formato `ErrorResponse` y los
+  manejadores comunes —`MethodArgumentNotValidException`, `HttpMessageNotReadableException`,
+  `MethodArgumentTypeMismatchException`, `HttpRequestMethodNotSupportedException`,
+  `HttpMediaTypeNotSupportedException` y `Exception` como `500 ERROR_INTERNO`—. Se sustituyen
+  las excepciones de dominio de usuarios por las de canchas de la tabla del design §7, y se
+  agregan las dos `DataIntegrityViolationException` distinguidas por el nombre de la
+  restriccion.
+
+Comando de copia, desde la raiz del repositorio:
+
+```powershell
+Copy-Item backend/ms-usuarios/Dockerfile backend/ms-canchas/Dockerfile
+Copy-Item backend/ms-usuarios/src/main/java/ec/ups/dae/usuarios/config/FiltroToken.java backend/ms-canchas/src/main/java/ec/ups/dae/canchas/config/
+Copy-Item backend/ms-usuarios/src/main/java/ec/ups/dae/usuarios/config/SeguridadConfig.java backend/ms-canchas/src/main/java/ec/ups/dae/canchas/config/
+Copy-Item backend/ms-usuarios/src/main/java/ec/ups/dae/usuarios/service/TokenService.java backend/ms-canchas/src/main/java/ec/ups/dae/canchas/service/
+Copy-Item backend/ms-usuarios/src/main/java/ec/ups/dae/usuarios/exception/ManejadorExcepciones.java backend/ms-canchas/src/main/java/ec/ups/dae/canchas/exception/
+```
+
+**Prohibido** en estas tres tareas: escribir desde cero cualquiera de los cinco archivos, o
+cambiar el algoritmo, el parseo o el manejo de errores del token. Tampoco se modifica nada
+dentro de `backend/ms-usuarios`: la copia va en un solo sentido.
+
+---
+
 **Precondicion comun de T5 a T8 — `postgres` en estado `healthy`.** El healthcheck solo pasa
 cuando el ultimo script del init ya cargo el seed, y `ms-canchas` depende de esa condicion.
 Antes de lanzar cualquier `curl`:
@@ -54,10 +108,15 @@ campo `token` de cada respuesta. Ambos servicios comparten `JWT_SECRET`, asi que
 3.5.3** y agrega a mano `springdoc-openapi-starter-webmvc-ui` 2.8.6 y los tres artefactos
 `io.jsonwebtoken` 0.12.6 (`jjwt-api`, `jjwt-impl`, `jjwt-jackson`). Escribe
 `application.properties` con el datasource de `canchas_db`, `ddl-auto=validate`,
-`server.port=8080` y `jwt.secret` desde `JWT_SECRET`. Crea el `Dockerfile` copiando el
-patron oficial de `CLAUDE.md` §1 sin cambios, ajustando solo el `.jar` a
-`ms-canchas-0.0.1-SNAPSHOT.jar`, y agrega el servicio `ms-canchas` a `docker-compose.yml`
+`server.port=8080` y `jwt.secret` desde `JWT_SECRET`. **Copia** el `Dockerfile` desde
+`backend/ms-usuarios` segun la regla de reutilizacion de arriba, cambiando unicamente el
+`.jar` a `ms-canchas-0.0.1-SNAPSHOT.jar`, y agrega el servicio `ms-canchas` a
+`docker-compose.yml`
 con `8083:8080` temporal y `depends_on: postgres` con `condition: service_healthy`.
+
+**Instruccion literal.** El `Dockerfile` **se copia** de `backend/ms-usuarios/Dockerfile` y
+se adapta **solo** en el nombre del `.jar` (`ms-usuarios-0.0.1-SNAPSHOT.jar` ->
+`ms-canchas-0.0.1-SNAPSHOT.jar`). **No se reescribe desde cero.**
 
 **Cubre.** E-01, E-07; §2.1, §2.2, §2.3 del requirements; §8 del design.
 
@@ -110,11 +169,18 @@ las validaciones `jakarta.validation` de las tablas del design §3 (fechas y hor
 formateo y parseo estricto de `HH:mm` y `AAAA-MM-DD`; las excepciones
 `CanchaNoEncontradaException`, `BloqueoNoEncontradoException`, `NombreDuplicadoException`,
 `BloqueoDuplicadoException`, `HorarioInvalidoException`, `FueraDeHorarioException`,
-`FechaPasadaException`, `FormatoInvalidoException`; y `exception/ManejadorExcepciones` con
-`@RestControllerAdvice` cubriendo la tabla completa del design §7, incluidos
+`FechaPasadaException`, `FormatoInvalidoException`; y **copia**
+`exception/ManejadorExcepciones` desde `backend/ms-usuarios` segun la regla de reutilizacion
+de arriba, adaptandolo para cubrir la tabla completa del design §7, incluidos
 `HttpRequestMethodNotSupportedException` y `HttpMediaTypeNotSupportedException` como
 `400 DATOS_INVALIDOS`, las dos `DataIntegrityViolationException` distinguidas por el nombre
 de la restriccion, y `Exception` como `500 ERROR_INTERNO`. Sin controladores todavia.
+
+**Instruccion literal.** `ManejadorExcepciones` **se copia** de
+`backend/ms-usuarios/src/main/java/ec/ups/dae/usuarios/exception/ManejadorExcepciones.java`
+y se adapta **solo** en el paquete y los `import` (`ec.ups.dae.usuarios` ->
+`ec.ups.dae.canchas`) y en las excepciones de dominio propias de este servicio. **No se
+reescribe desde cero.**
 
 **Cubre.** HU-10, E-05; decisiones D-03, D-04, D-08, D-09, D-14.
 
@@ -133,14 +199,20 @@ Esperado: compila y arranca. Los dos codigos `409` usados son exactamente
 
 ## T4 — Seguridad: validacion del token y reglas de acceso
 
-**Que hace.** Crea `service/TokenService` (validacion local del JWT HS256 con `JWT_SECRET`,
-lectura de los claims `sub` y `rol`), el filtro que lee `Authorization: Bearer` y deja el
-`Authentication` con la autoridad del rol en el `SecurityContext`, y `config/SeguridadConfig`
-con sesion `STATELESS`, CSRF desactivado, las rutas de documentacion publicas
-(`/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`), `anyRequest().authenticated()`,
-las reglas por ruta de la tabla del design §5 (escritura solo `ADMIN`) y los manejadores que
-devuelven `401 NO_AUTENTICADO` y `403 SIN_PERMISO` en formato `ErrorResponse`. Este servicio
-**no emite** tokens. Todavia sin endpoints propios.
+**Que hace.** **Copia** `service/TokenService`, `config/FiltroToken` y
+`config/SeguridadConfig` desde `backend/ms-usuarios` segun la regla de reutilizacion de
+arriba. `FiltroToken` cambia solo de paquete. `TokenService` conserva `validar`,
+`usuarioIdDe` y `rolDe` sin tocar una linea, y pierde `emitir` y `jwt.vigencia-horas`: este
+servicio **no emite** tokens. `SeguridadConfig` conserva la cadena `STATELESS`, las rutas de
+documentacion publicas, el `addFilterBefore` y los manejadores de `401 NO_AUTENTICADO` y
+`403 SIN_PERMISO`; se le reemplaza la matriz de rutas por la tabla del design §5 (escritura
+solo `ADMIN`) y se le quita el `PasswordEncoder`. Todavia sin endpoints propios.
+
+**Instruccion literal.** Los tres archivos **se copian** de
+`backend/ms-usuarios/src/main/java/ec/ups/dae/usuarios/` y se adaptan **solo** en el paquete
+y los `import` (`ec.ups.dae.usuarios` -> `ec.ups.dae.canchas`) y en las rutas especificas de
+este servicio. **No se reescriben desde cero**, y en particular el algoritmo, el parseo y el
+manejo de errores del token quedan byte por byte como en `ms-usuarios`.
 
 **Cubre.** HU-09, E-04, RN-07 en su parte de autorizacion; decisiones D-15 y §5 del design.
 

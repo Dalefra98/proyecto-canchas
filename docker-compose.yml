@@ -39,6 +39,22 @@ services:
       postgres:
         condition: service_healthy
 
+  ms-canchas:
+    build: ./backend/ms-canchas
+    container_name: canchas-ms-canchas
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/canchas_db
+      SPRING_DATASOURCE_USERNAME: canchas_user
+      SPRING_DATASOURCE_PASSWORD: canchas_pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      - "8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   adminer:
     image: adminer:4
     container_name: canchas-adminer
