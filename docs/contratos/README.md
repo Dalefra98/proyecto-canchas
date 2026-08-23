@@ -147,6 +147,7 @@ respuesta son los de la tabla "Formato de error".
 | Bloque ya reservado (RN-02) | 409 | `BLOQUE_OCUPADO` |
 | Límite de reservas activas (RN-06) | 409 | `LIMITE_RESERVAS` |
 | Reserva ya ocurrida (RN-04) | 409 | `RESERVA_PASADA` |
+| Error no previsto en el servidor | 500 | `ERROR_INTERNO` |
 
 ## Contrato Module Federation
 
@@ -173,3 +174,4 @@ Props que el shell entrega a todo remote:
 | 23/08/2026 | Se congelan los payloads `LoginResponse`, `DisponibilidadResponse` y los tres reportes (`desde`, `hasta`, `items`), con sus campos `token`, `usuario`, `bloques`, `disponible`, `horasReservadas`, `horasDisponibles`, `totalReservas`, `totalCancelaciones` | David Aristega | 01-modelo-y-contratos |
 | 23/08/2026 | Se agrega `GET /api/canchas/{canchaId}` (ADMIN, USUARIO) y se amplía `GET /api/canchas/{canchaId}/bloqueos` a ADMIN y USUARIO, para que ms-reservas calcule disponibilidad | David Aristega | 01-modelo-y-contratos |
 | 23/08/2026 | Se agrega el código de error `EMAIL_DUPLICADO` (HTTP 409) | David Aristega | 01-modelo-y-contratos |
+| 23/08/2026 | Se agrega el código de error `ERROR_INTERNO` (HTTP 500) para toda excepción no prevista; lo usan los cuatro microservicios | David Aristega | 02-ms-usuarios y siguientes |
