@@ -18,4 +18,19 @@ CREATE TABLE cancha (
     CONSTRAINT ck_cancha_horario CHECK (hora_cierre > hora_apertura)
 );
 
+CREATE TABLE bloqueo_mantenimiento (
+    bloqueo_id  BIGINT       GENERATED ALWAYS AS IDENTITY,
+    cancha_id   BIGINT       NOT NULL,
+    fecha       DATE         NOT NULL,
+    hora_inicio TIME         NOT NULL,
+    hora_fin    TIME         NOT NULL,
+    motivo      VARCHAR(200) NOT NULL,
+    CONSTRAINT pk_bloqueo PRIMARY KEY (bloqueo_id),
+    -- La clave foranea es valida: cancha y bloqueo_mantenimiento viven en canchas_db.
+    CONSTRAINT fk_bloqueo_cancha FOREIGN KEY (cancha_id)
+        REFERENCES cancha (cancha_id) ON DELETE RESTRICT,
+    CONSTRAINT uq_bloqueo_franja UNIQUE (cancha_id, fecha, hora_inicio),
+    CONSTRAINT ck_bloqueo_rango CHECK (hora_fin > hora_inicio)
+);
+
 RESET ROLE;
