@@ -10,6 +10,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./infra/postgres/02-ddl-usuarios.sql:/docker-entrypoint-initdb.d/02-ddl-usuarios.sql:ro
+      - ./infra/postgres/03-ddl-canchas.sql:/docker-entrypoint-initdb.d/03-ddl-canchas.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
