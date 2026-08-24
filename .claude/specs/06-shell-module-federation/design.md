@@ -128,6 +128,7 @@ recarga en caliente no funciona en Windows (D-15).
 | `historyApiFallback` | **no se usa** | no hay enrutador (P-05): la URL nunca cambia |
 | `hot` | `true` | recarga en caliente durante el desarrollo |
 | `client.webSocketURL` | `"ws://localhost:3000/ws"` | el socket de recarga lo abre el **navegador**, asi que su URL es la del host, no la del contenedor |
+| `client.overlay.runtimeErrors` | `false` | el overlay tapa la pantalla con un error que `BordeError` ya capturo y manejo (D-16) |
 | `proxy` | array de cuatro entradas (§3.3) | P-02 |
 
 ### 3.3 Proxy de `/api` y la doble naturaleza del `devServer`
@@ -470,6 +471,7 @@ Comandos en PowerShell desde la raiz, con `curl.exe` y solo Docker (`CLAUDE.md` 
 | D-13 | Un solo `src/estilos.css` importado desde `bootstrap.jsx` | Un archivo CSS por componente | Sin librerias de UI ni preprocesador, un archivo plano y corto es mas facil de revisar que doce imports; el shell tiene ocho componentes de presentacion |
 | D-14 | `client.webSocketURL` apunta a `ws://localhost:3000/ws` | Dejar el valor por omision | Por omision el cliente deduce la URL del host interno del contenedor y la recarga en caliente falla en silencio desde el navegador del host |
 | D-15 | `watchOptions` con `poll: 1000` e `ignored: /node_modules/`, obligatorio en el shell y en los tres remotes | Confiar en los eventos del sistema de archivos, que es el valor por omision | El bind mount de Windows no entrega eventos inotify dentro del contenedor: webpack compila al arrancar y luego ignora todo guardado. El sintoma engaña, porque el registro sigue mostrando el `compiled successfully` anterior mientras el archivo ya cambio dentro del contenedor. Detectado en la T3 y anotado en `docs/bitacora.md` |
+| D-16 | `devServer.client.overlay.runtimeErrors: false` | Dejar el overlay activo, que es el valor por omision | El fallo de carga de un remote (`ScriptExternalLoadError`) ya lo captura `BordeError` y se muestra como "Modulo no disponible" (HU-06). El overlay lo repite tapando la pantalla completa: en desarrollo es ruido sobre un error ya manejado, y en la demo en vivo haria parecer un fallo lo que es el comportamiento esperado de HU-06 mientras los tres remotes no existan. Los errores siguen apareciendo en la consola del navegador, asi que no se pierde diagnostico. Decidido el 24/08/2026 tras verificar el paso 1 de T6 |
 
 ## 13. Fuera de alcance de este diseño
 
