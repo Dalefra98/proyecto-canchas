@@ -4,6 +4,9 @@ import { iniciarSesion, registrarUsuario } from "./api/usuariosApi";
 import * as almacenSesion from "./sesion/almacenSesion";
 import PantallaSesion from "./components/PantallaSesion";
 import PantallaRegistro from "./components/PantallaRegistro";
+import Cabecera from "./components/Cabecera";
+import MenuModulos, { modulosDelRol } from "./components/MenuModulos";
+import PantallaBienvenida from "./components/PantallaBienvenida";
 
 // D-08: el estado de la sesion vive aqui y baja por props.
 // D-09: el mapeo de LoginResponse a la prop usuario son estos tres campos.
@@ -71,6 +74,38 @@ function App() {
     setVista("sesion");
   }
 
+  function cerrarSesionConAviso(aviso) {
+    almacenSesion.borrar();
+    setSesion(null);
+    setVista("sesion");
+    setAvisoSesion(aviso);
+  }
+
+  // HU-04. Sin parametros: es la funcion que va al onClick de Cabecera y a la
+  // prop onLogout de los remotes, y React invoca ambos con el evento del clic.
+  // Recibir ese evento como si fuera el aviso lo terminaba guardando en el
+  // estado, y React no puede pintar un SyntheticEvent como texto.
+  // Sin ninguna llamada HTTP: el contrato no declara ruta de cierre de sesion.
+  function cerrarSesion() {
+    cerrarSesionConAviso(null);
+  }
+
+  // P-08. Un 401 en una llamada ya autenticada significa token vencido: se
+  // cierra la sesion con aviso. Hoy no tiene llamador dentro del shell, porque
+  // sus dos rutas son publicas (design 6.1); lo estrenan los remotes al recibir
+  // un 401 y llamar onLogout.
+  function manejarSesionExpirada() {
+    cerrarSesionConAviso("Su sesion expiro. Vuelva a iniciar sesion.");
+  }
+
+  function abrirModulo(clave) {
+    setVista(clave);
+  }
+
+  function irAInicio() {
+    setVista("bienvenida");
+  }
+
   if (sesion === null) {
     if (vista === "registro") {
       return <PantallaRegistro onRegistrar={manejarRegistro} onVolver={irASesion} />;
@@ -85,15 +120,45 @@ function App() {
     );
   }
 
-  // Vista provisional: la cabecera, el menu por rol y la pantalla de bienvenida
-  // son de la tarea T5.
+  const usuario = sesion.usuario;
+
+  // HU-05: un rol que no es ADMIN ni USUARIO no monta ningun remote. No deberia
+  // ocurrir —ms-usuarios solo emite esos dos y SERVICIO nunca se persiste—, y
+  // por eso se avisa en lugar de intentar adivinar un menu.
+  if (!modulosDelRol(usuario.rol).length) {
+    return (
+      <div className="aplicacion">
+        <Cabecera usuario={usuario} onCerrarSesion={cerrarSesion} />
+        <p className="aviso" role="alert">
+          El rol {usuario.rol} no tiene modulos asignados en esta aplicacion.
+        </p>
+      </div>
+    );
+  }
+
+  // Se valida el rol antes de montar, no solo al pintar el menu: ocultar una
+  // opcion no es control de acceso (HU-05).
+  const moduloPedido = modulosDelRol(usuario.rol).find((modulo) => modulo.clave === vista);
+  const vistaEfectiva = moduloPedido ? moduloPedido.clave : "bienvenida";
+
   return (
-    <main>
-      <h1>Reserva de Canchas Deportivas</h1>
-      <p>
-        Sesion activa de {sesion.usuario.nombre} ({sesion.usuario.rol}). Vista actual: {vista}.
-      </p>
-    </main>
+    <div className="aplicacion">
+      <Cabecera usuario={usuario} onCerrarSesion={cerrarSesion} />
+      <MenuModulos
+        rol={usuario.rol}
+        vista={vistaEfectiva}
+        onAbrirModulo={abrirModulo}
+        onIrAInicio={irAInicio}
+      />
+      {vistaEfectiva === "bienvenida" ? (
+        <PantallaBienvenida usuario={usuario} />
+      ) : (
+        // El montaje real del remote es de la tarea T6.
+        <section className="contenido-modulo">
+          <p>Modulo {vistaEfectiva}: se monta en la tarea T6.</p>
+        </section>
+      )}
+    </div>
   );
 }
 
