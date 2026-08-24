@@ -118,6 +118,50 @@ dejó vacía, como en el seed.
 
 ---
 
+## Spec 04 — ms-reservas
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 23/08/2026 | C1 | Generar requirements.md de ms-reservas | Sí, tras responder 11 preguntas | La IA se detuvo en 11 datos faltantes. Tres eran huecos de fondo: **nadie producía el estado `FINALIZADA`** aunque el contrato y el DDL lo declaran; **RN-06 decía "configurable" sin decir dónde** ni qué cuenta como "activa"; y el asunto **A-01** de la spec 03 seguía sin mecanismo. Además detectó una **contradicción real entre el PDF de alcance y el contrato**: el PDF marca "No" al administrador en crear reservas e historial propio, pero el contrato no declara `403` en esas dos rutas |
+| 2 | 23/08/2026 | C1 | Responder las once preguntas y actualizar el contrato | Sí | Se decidió: token de servicio `rol = SERVICIO` con `exp` de 5 min y solo lectura (A-01 resuelto); `FINALIZADA` **calculado al leer**, nunca persistido; límite 3 desde `RESERVAS_MAX_ACTIVAS` contando solo reservas futuras; y **manda el contrato** en la contradicción del PDF: el ADMIN sí reserva. Dos cambios al contrato congelado: valor `SERVICIO` en `rol` y código `RESERVA_NO_CANCELABLE` |
+| 3 | 23/08/2026 | C1 | Cerrar los supuestos abiertos | Sí | La IA derivó de cruzar dos decisiones una consecuencia que nadie había pedido, **C-02**: como `FINALIZADA` no se persiste, cancelar una reserva vista como finalizada cae en RN-04 y responde `RESERVA_PASADA`, no `RESERVA_NO_CANCELABLE`. El responsable la confirmó |
+| 4 | 23/08/2026 | C2 | Generar design.md con modelo, DTOs, endpoints y excepciones | Sí, tras 1 corrección | En el flujo de alta, la validación del bloqueo de mantenimiento —una **llamada HTTP**— iba antes que la del bloque ya reservado, que es una consulta local. Se reordenó: los tres devuelven `409`, así que el rechazo más frecuente no debe costar una llamada de red. Quedó como decisión **D-19** |
+| 5 | 23/08/2026 | C3 | Generar tasks.md con 5 a 8 tareas verificables | Sí, tras 1 corrección | El responsable agregó **T9**, una tarea sin código: apagar `ms-canchas` y demostrar que `ms-reservas` sigue sirviendo lo que no depende de él, más el ciclo RN-02/RN-05 completo por API. Es la evidencia de independencia entre microservicios para la demo en vivo |
+| 6 | 23/08/2026 | C3 | Ejecutar T1 y T2 (esqueleto, entidad y repositorio) | Sí | Spring Initializr volvió a rechazar `3.5.3`: se descargó con `4.0.8` y se corrigió el `<parent>`, como en la spec 03. El primer `docker compose build` falló en `mvn` sin causa visible y el reintento compiló |
+| 7 | 23/08/2026 | C3 | Verificar el `@Query` de `contarActivas` antes de seguir | Sí | El responsable pidió revisar la única consulta que **falla en silencio**. Se ejecutó su predicado contra Postgres sobre datos sintéticos: 4 bordes correctos. Apareció un borde no escrito en ninguna parte —una reserva que empieza **exactamente ahora**— y se decidió que no cuenta como activa: ya está ocurriendo, no es un turno acaparable. Decisión **D-20**, extendida luego al otro extremo del bloque |
+| 8 | 23/08/2026 | C3 | Ejecutar T3 y T4 (DTOs, mapper, excepciones y seguridad) | Sí | Al verificar T4 salió un defecto **preexistente**: una ruta inexistente respondía `500` en vez de `404`, y `ms-canchas` hacía lo mismo. El responsable decidió corregirlo pero **no ahí**: quedó como asunto abierto **A-02** y tarea **T10**, la última, para no mezclar un cambio transversal con la implementación de `ms-reservas` |
+| 9 | 23/08/2026 | C3 | Ejecutar T5 y T6 (rol `SERVICIO` en `ms-canchas`, cliente HTTP y disponibilidad) | Sí | `SeguridadConfig` de `ms-canchas` **no necesitó cambio funcional**: sus `GET` ya eran `.authenticated()`. El cambio real fue el filtro, porque el token de servicio no trae `sub`. Las pruebas del rol `SERVICIO` parecían imposibles sin `java` en el host: se resolvieron acuñando el token **dentro del contenedor** con `openssl`, sin que el secreto saliera de ahí |
+| 10 | 23/08/2026 | C3 | Ejecutar T7 a T10 (alta, listados, cancelación, evidencia y `404`) | Sí | 4 tareas verificadas con salida real, sin correcciones de contenido. Para probar RN-04 hubo que **insertar por SQL** una reserva pasada, porque la propia API impide crearla (D-03); quedó declarado y se limpió en T9. En T10 se confirmó primero en el log que la excepción real era `NoResourceFoundException`, así que no hizo falta la propiedad `throw-exception-if-no-handler-found` que la tarea preveía |
+
+Total de iteraciones: 10
+Tiempo invertido: ____
+
+**Observación:** en esta spec las compuertas atraparon algo que las anteriores no habían
+mostrado: **decisiones que se contradicen entre sí sin que ninguna esté mal**. `FINALIZADA`
+calculado al leer y `RESERVA_NO_CANCELABLE` eran ambas razonables por separado, y juntas
+dejaban un caso sin respuesta clara (C-02). Lo mismo con el PDF y el contrato: los dos
+documentos son válidos y decían cosas distintas sobre el mismo endpoint. Ninguna revisión de
+código lo habría detectado, porque no hay línea equivocada que señalar.
+
+El otro aporte fue de **orden de ejecución**, no de contenido: D-19 y la separación de T10 no
+cambian ninguna respuesta de la API, cambian cuánto cuesta darla y qué queda mezclado en un
+commit.
+
+**Estado de la spec 04: cerrada.** Diez tareas ejecutadas y verificadas con salida real; las
+cinco rutas congeladas de `/api/reservas` responden con los nombres y códigos del contrato, y
+el documento OpenAPI declara sus códigos de error. Quedan cerrados los dos asuntos abiertos:
+**A-01** (mecanismo de credenciales de servicio, que venía de la spec 03) y **A-02** (`404`
+en ruta inexistente, corregido en los tres microservicios).
+
+**Estado en que quedó el entorno:** la tabla `reserva` está **vacía** —las 7 reservas de
+prueba se borraron en T9—, `bloqueo_mantenimiento` sigue vacía como en el seed, y la cancha
+`Padel 2` (`canchaId = 4`, `08:00`–`21:00`) se conserva activa: la spec 05 la necesita por la
+misma razón que la spec 04, tener un horario distinto al de las tres canchas del seed.
+
+---
+
 **Hallazgos de entorno (aplican a todas las specs):**
 - `pg_isready` responde OK mientras Postgres aun ejecuta los scripts de
   `docker-entrypoint-initdb.d`. El `healthcheck` del compose da un falso positivo,
@@ -134,3 +178,11 @@ dejó vacía, como en el seed.
   con `--mount=type=cache,target=/root/.m2` (`CLAUDE.md` §1).
 - En Git Bash, `psql -f /docker-entrypoint-initdb.d/...` requiere `MSYS_NO_PATHCONV=1`
   para que no se traduzca la ruta. Lo mismo aplica a `docker run -w /app`.
+- Un token de servicio (o cualquier JWT firmado con `JWT_SECRET`) se puede acuñar **dentro
+  de un contenedor** con `openssl dgst -sha256 -mac HMAC -macopt "key:$JWT_SECRET"`, sin
+  `java` ni `mvn` en el host y sin que el secreto salga del contenedor. Es la forma de
+  probar a mano un rol que ningún endpoint emite. El `wget` de BusyBox, en cambio, **no
+  imprime el cuerpo** de las respuestas de error: sirve para el código HTTP, no para el JSON.
+- Levantar los tres microservicios a la vez con `docker compose up -d --build` tarda 60–70 s
+  cada uno, contra ~11 s cuando se levanta uno solo. Un `curl` inmediato devuelve `HTTP 000`;
+  hay que esperar a ver `Started Ms...Application` en el log antes de verificar.

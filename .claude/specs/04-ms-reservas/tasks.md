@@ -2,6 +2,10 @@
 
 Base: `requirements.md` (C1 aprobado 23/08/2026) y `design.md` (C2 aprobado 23/08/2026).
 
+**Estado: las diez tareas (T1 a T10) fueron ejecutadas y verificadas con salida real el
+23/08/2026. Spec 04 cerrada** — ver `docs/bitacora.md` para la traza de iteraciones y el
+estado en que quedo el entorno.
+
 Reglas de ejecucion: **una tarea a la vez**. Al terminar cada tarea se ejecuta su comando de
 verificacion, se reporta el resultado y se espera aprobacion. Ninguna tarea encadena la
 siguiente. Cada tarea deja el proyecto compilando y el servicio arrancando.

@@ -1,8 +1,8 @@
 # Spec 04 — ms-reservas · requirements.md
 
 Estado: **C1 — APROBADO** el 23/08/2026 ("Apruebo requisitos de la spec 04").
-La compuerta C2 (`design.md`) sigue pendiente: no se escribe codigo de produccion hasta
-que el diseno este aprobado por escrito.
+**Spec 04 CERRADA** el 23/08/2026: las tres compuertas aprobadas y las diez tareas de
+`tasks.md` ejecutadas y verificadas con salida real (ver `docs/bitacora.md`).
 
 Las once preguntas abiertas (P-01 a P-11) fueron resueltas por el responsable el
 23/08/2026 y ya estan incorporadas a este documento. Las decisiones P-01 y P-10 obligaron a
@@ -537,7 +537,7 @@ regla.
 Queda escrito aqui de forma explicita para la defensa del proyecto: la diferencia con el
 PDF es deliberada y esta justificada, no es un descuido.
 
-### 6.3 A-02 — Una ruta inexistente responde `500`, no `404` (asunto abierto)
+### 6.3 A-02 — Una ruta inexistente responde `500`, no `404` (CERRADO en T10)
 
 Detectado al verificar T4 el 23/08/2026 con salida real: una peticion **autenticada** a una
 ruta que no existe no llega a ningun controlador, Spring lanza `NoResourceFoundException` y
@@ -558,9 +558,11 @@ manejador de `NoResourceFoundException` al `ManejadorExcepciones` de `ms-usuario
 `ms-canchas` y `ms-reservas`, con la propiedad
 `spring.mvc.throw-exception-if-no-handler-found` o su equivalente segun la version.
 
-Hasta que T10 se ejecute, el comportamiento actual sigue vigente y esta documentado aqui a
-proposito. No afecta a las cinco rutas congeladas de `ms-reservas`: todas tendran handler al
-terminar T8.
+**Cerrado el 23/08/2026 con la ejecucion de T10.** Los tres microservicios responden
+`404 NO_ENCONTRADO` en una ruta inexistente, verificado en los puertos 8082, 8083 y 8084. No
+hizo falta `spring.mvc.throw-exception-if-no-handler-found`: el log confirmo que la excepcion
+real es `NoResourceFoundException`, que ya llegaba al `@RestControllerAdvice` y solo carecia
+de manejador. Los `404` de negocio conservan su mensaje propio.
 
 ## 7. Fuera de alcance de esta spec
 

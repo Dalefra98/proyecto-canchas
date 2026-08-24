@@ -1,7 +1,10 @@
 # Spec 04 — ms-reservas · design.md
 
 Estado: **C2 — APROBADO** el 23/08/2026 ("Apruebo diseño de la spec 04").
-Falta `tasks.md`: el codigo de produccion se escribe tarea por tarea, una a la vez.
+**Spec 04 CERRADA** el 23/08/2026: las diez tareas de `tasks.md` fueron ejecutadas y
+verificadas con salida real (ver `docs/bitacora.md`). Se implemento tal como esta descrito
+aqui, mas las decisiones D-19 y D-20, agregadas durante la ejecucion y aprobadas por el
+responsable.
 
 Base: `.claude/specs/04-ms-reservas/requirements.md` (C1 aprobado el 23/08/2026, con las
 once decisiones D-01 a D-11 y las consecuencias C-02 y C-03), `docs/contratos/README.md`
