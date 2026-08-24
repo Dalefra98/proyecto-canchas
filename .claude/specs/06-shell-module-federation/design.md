@@ -112,10 +112,16 @@ tres campos dentro de `App.jsx` (D-09).
 | `output.publicPath` | `"auto"` | sin ella, el host pide los `chunk` del remote a su propio origen y la carga falla |
 | `output.uniqueName` | `"shell"` | evita colisiones de runtime entre host y remotes |
 
-### 3.2 `devServer`
+### 3.2 `devServer` y `watchOptions`
+
+`watchOptions` no vive dentro de `devServer`, sino al lado, en la raiz de la configuracion.
+Es **obligatorio**, no un parche del shell: los tres remotes lo necesitan igual y sin el la
+recarga en caliente no funciona en Windows (D-15).
 
 | Opcion | Valor | Motivo |
 |---|---|---|
+| `watchOptions.poll` | `1000` | el bind mount de Windows no entrega eventos inotify al contenedor: sin sondeo, `webpack serve` compila al arrancar y despues nunca ve un archivo guardado |
+| `watchOptions.ignored` | `/node_modules/` | sondear el `node_modules` instalado dentro del contenedor gasta CPU sin ninguna ganancia |
 | `port` | `3000` | contrato |
 | `host` | `"0.0.0.0"` | dentro del contenedor, escuchar solo en `localhost` deja al navegador del host sin acceso (advertencia del responsable, C1 §HU-08) |
 | `allowedHosts` | `"all"` | el navegador entra por `localhost:3000`, que no es el host interno del contenedor |
@@ -463,6 +469,7 @@ Comandos en PowerShell desde la raiz, con `curl.exe` y solo Docker (`CLAUDE.md` 
 | D-12 | `ContenedorRemoto` recibe el `token` por prop en cada render | Que cada remote lea el token de `sessionStorage` por su cuenta | El contrato de props declara `token` (C-1). Si cada remote leyera el almacenamiento, el shell dejaria de ser el dueño de la sesion y un cierre de sesion no se propagaria |
 | D-13 | Un solo `src/estilos.css` importado desde `bootstrap.jsx` | Un archivo CSS por componente | Sin librerias de UI ni preprocesador, un archivo plano y corto es mas facil de revisar que doce imports; el shell tiene ocho componentes de presentacion |
 | D-14 | `client.webSocketURL` apunta a `ws://localhost:3000/ws` | Dejar el valor por omision | Por omision el cliente deduce la URL del host interno del contenedor y la recarga en caliente falla en silencio desde el navegador del host |
+| D-15 | `watchOptions` con `poll: 1000` e `ignored: /node_modules/`, obligatorio en el shell y en los tres remotes | Confiar en los eventos del sistema de archivos, que es el valor por omision | El bind mount de Windows no entrega eventos inotify dentro del contenedor: webpack compila al arrancar y luego ignora todo guardado. El sintoma engaña, porque el registro sigue mostrando el `compiled successfully` anterior mientras el archivo ya cambio dentro del contenedor. Detectado en la T3 y anotado en `docs/bitacora.md` |
 
 ## 13. Fuera de alcance de este diseño
 

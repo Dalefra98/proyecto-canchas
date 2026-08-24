@@ -220,3 +220,14 @@ son correctas por separado y el defecto solo aparece al escribir el consumidor.
   `curl.exe -X POST http://localhost:3000/api/usuarios/sesiones -H "Content-Type:
   application/json" --data "@cuerpo.json"`. Un `400` en una verificación con cuerpo en línea
   hay que descartarlo como problema de escapado **antes** de tocar el código.
+- En Windows, el bind mount de Docker **no entrega eventos inotify** dentro del contenedor:
+  `webpack serve` compila bien al arrancar, pero después nunca ve un archivo guardado y no
+  recompila. El síntoma engaña, porque `docker compose logs` sigue mostrando el
+  `compiled successfully` viejo con el tamaño viejo del archivo, mientras
+  `docker compose exec shell ls -l src/App.jsx` ya muestra el tamaño nuevo: parece que el
+  código no se aplicó cuando en realidad no se compiló. Se resuelve con
+  `watchOptions: { poll: 1000, ignored: /node_modules/ }` en `webpack.config.js`, que pasa
+  el watcher a sondeo. Detectado en la T3 de la spec 06; obligatorio en el shell y en los
+  tres remotes, y escrito en el `design.md` §3.2 de esa spec. Al comparar dos corridas del
+  registro conviene usar `docker compose logs --timestamps`: es la forma de notar que la
+  última compilación es anterior al último guardado.

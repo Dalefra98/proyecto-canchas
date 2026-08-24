@@ -56,6 +56,12 @@ module.exports = {
       template: "./public/index.html"
     })
   ],
+  // El bind mount de Windows no entrega eventos inotify dentro del contenedor:
+  // sin sondeo, webpack nunca ve un archivo guardado y no recompila.
+  watchOptions: {
+    poll: 1000,
+    ignored: /node_modules/
+  },
   devServer: {
     port: 3000,
     // Dentro del contenedor, escuchar solo en localhost deja al navegador del
