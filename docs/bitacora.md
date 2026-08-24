@@ -292,3 +292,12 @@ token vencido puede llegarle; la estrenan los remotes al recibir un `401` y llam
   código *compila*, no que *funcione*; toda tarea con interacción necesita además su paso de
   navegador. Los cuatro microservicios no tenían este hueco porque su verificación era una
   petición real con `curl.exe`, no una compilación.
+- `webpack-dev-server` 5.2.0 agrega el encabezado **`X_TEST: TEST`** a toda respuesta cuando la
+  configuración declara `devServer.headers`. No sale de nuestra configuración: es una línea de
+  depuración que quedó en esa versión, en `node_modules/webpack-dev-server/lib/Server.js:3060`,
+  dentro del mismo bloque que aplica los encabezados declarados. Se ve en los `curl.exe -I` del
+  remote y no en los del shell, porque el shell no declara `headers`. **No se puede quitar sin
+  perder el `Access-Control-Allow-Origin: *` del `remoteEntry.js`** que la decisión D-03 de la
+  spec 07 necesita para que el navegador deje al shell (`localhost:3000`) descargar el remote
+  (`localhost:3001`). Detectado en la T1 de la spec 07: es ruido inofensivo, no un defecto, y no
+  hay que perseguirlo en las verificaciones de los tres remotes.
