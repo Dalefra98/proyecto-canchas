@@ -113,9 +113,19 @@ docker compose logs --tail=50 ms-reportes
 curl.exe -s -o NUL -w "%{http_code}`n" http://localhost:8085/v3/api-docs
 ```
 
-Esperado: compila; el contenedor queda `Up`; el log **no** menciona `HikariPool`,
-`DataSource` ni `Hibernate` —prueba de que no hay base—; y `/v3/api-docs` responde `200` con
-`paths` vacio, porque todavia no hay controladores.
+Esperado: compila; el contenedor queda `Up`; y el log **no** menciona `HikariPool` ni
+`DataSource` —prueba de que no hay base de datos, que es lo que esta tarea demuestra
+(D-01)—.
+
+`/v3/api-docs` responde **`401`**, no `200`. **No es un defecto**: quien abre esa ruta sin
+token es el `permitAll()` de `SeguridadConfig`, que se copia en **T3**. Mientras esa clase no
+exista, Spring Security protege todo por defecto, y el log lo confirma con la linea
+`Using generated security password: ...`. El `200` sobre `/v3/api-docs` se verifica en T3,
+donde ya es la prueba de que springdoc quedo abierto.
+
+El log muestra ademas un `INFO` de `OptionalValidatorFactoryBean` diciendo que no encontro un
+proveedor de Bean Validation. Tambien es lo esperado: `spring-boot-starter-validation` se
+excluyo a proposito porque no hay cuerpo de peticion que validar (design §4.3).
 
 ---
 
@@ -136,13 +146,23 @@ Esperado: compila; el contenedor queda `Up`; el log **no** menciona `HikariPool`
 ```powershell
 docker run --rm -v "${PWD}/backend/ms-reportes:/app" -v m2repo:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn -q clean package -DskipTests
 docker compose up -d --build ms-reportes
+docker compose logs --tail=20 ms-reportes
 curl.exe -s -w "`n%{http_code}`n" http://localhost:8085/api/reportes/inexistente
 ```
 
-Esperado: compila y arranca. La ruta inexistente responde con el cuerpo
-`{"codigo":"NO_ENCONTRADO","mensaje":"El recurso solicitado no existe"}` y `404`, no un
-`500` ni un stacktrace. Todavia no hay seguridad, asi que la ruta se alcanza sin token: eso
-cambia en T3.
+Esperado: compila y el contenedor arranca con los nueve DTOs y el `@RestControllerAdvice`
+cargados.
+
+La ruta inexistente responde **`401`**, no `404`, **por la misma razon que en T1**: sin
+`SeguridadConfig` —que llega en T3— Spring Security exige autenticacion en todo, y la
+peticion ni siquiera alcanza al `ManejadorExcepciones`. La prueba real del
+`404 NO_ENCONTRADO` con el cuerpo `{"codigo":"NO_ENCONTRADO","mensaje":"El recurso
+solicitado no existe"}` **se difiere a T3**, donde una ruta inexistente con token de ADMIN ya
+atraviesa la cadena y llega al manejador.
+
+Esta tarea, por tanto, se verifica por compilacion y arranque limpio. Es la consecuencia de
+copiar la seguridad despues de las excepciones; el orden inverso obligaria a tocar
+`SeguridadConfig` dos veces.
 
 ---
 
