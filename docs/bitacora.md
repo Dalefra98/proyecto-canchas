@@ -179,6 +179,55 @@ servicio, el mecanismo ya está congelado") y aun así lo dejó roto, porque con
 mecanismo de emisión y lo rechazó en la entrada. No es un error de código: las dos frases
 son correctas por separado y el defecto solo aparece al escribir el consumidor.
 
+## Spec 06 — shell (host de Module Federation)
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 23/08/2026 | C1 | Generar requirements.md del shell, primer microfrontend del proyecto | Sí, tras responder nueve preguntas y corregir dos deducciones | La IA se detuvo en nueve datos faltantes, cuatro de ellos bloqueantes: la contradicción entre el contrato de props (`id`) y el campo congelado (`usuarioId`), la ausencia de cualquier pieza que traduzca `/api` a los puertos `8082`–`8085`, dónde vive el token entre recargas y si la spec entrega el shell sin remotes con los que verificar la carga real |
+| 2 | 23/08/2026 | C1 | Responder las nueve preguntas y corregir las dos deducciones erróneas | Sí | **Las dos correcciones fueron del responsable, no de la IA.** (a) El `token` **sí** va en las props: sin él ningún remote puede llamar a la API, y resolverlo aquí evita que las tres specs de remotes lo inventen cada una a su manera. (b) El `ADMIN` **sí** ve el módulo Reservas: la IA lo había excluido leyendo el PDF §3.1, contradiciendo la decisión **D-08 de la spec 04**, ya cerrada, que estableció que el ADMIN crea reservas y tiene historial propio sin `403`. Ambas obligaron a modificar `docs/contratos/README.md` (props con `token` y `usuarioId`, más su fila en el registro de cambios) y `CLAUDE.md` §5 |
+| 3 | 23/08/2026 | C1 | Corregir el destino del `devServer.proxy` | Sí | La IA había dejado el proxy apuntando a `localhost:8082`–`8085`, los puertos del host. El responsable corrigió a nombres de contenedor (`http://ms-usuarios:8080`), porque el proxy lo ejecuta `webpack serve` **dentro** de la red de Docker. Quedó escrita la distinción que parece contradictoria y no lo es: las URLs de los remotes son del **navegador** (`http://localhost:3001/remoteEntry.js`) y el destino del proxy es de la **red Docker**. El servicio del shell sumó `depends_on` de los cuatro microservicios |
+| 4 | 23/08/2026 | C2 | Generar design.md con modelo de estado, payloads, rutas consumidas, códigos HTTP y decisiones | Sí, sin correcciones | La IA aportó por su cuenta dos trampas que no estaban en las instrucciones: **D-11**, crear los `React.lazy` fuera del render, porque crearlos dentro devuelve un componente nuevo en cada pintada y React desmonta y vuelve a descargar el remote; y **D-14**, `client.webSocketURL` apuntando al host, porque por omisión el cliente deduce la URL del host interno del contenedor y la recarga en caliente falla en silencio. Además declaró que tres de las cinco tablas pedidas no tienen equivalente en un host de Module Federation (no hay base de datos, ni endpoints expuestos, ni excepciones de servidor) y las sustituyó por su análogo, en vez de rellenar tablas vacías |
+| 5 | 23-24/08/2026 | C3 | Ejecutar las siete tareas de tasks.md, una por una | Sí, con cuatro hallazgos | Cuatro hallazgos de entorno o de código, detallados en la tabla siguiente. Dos obligaron a modificar la configuración del `devServer` ya escrita en T1 (`watchOptions.poll` y `client.overlay.runtimeErrors`), y ambos quedaron incorporados al `design.md` §3.2 como configuración obligatoria —con sus decisiones **D-15** y **D-16**— porque los tres remotes los van a necesitar igual |
+
+Tiempo invertido: ____
+
+**Hallazgos de la spec 06.** Cuatro, ninguno previsto en el diseño:
+
+| # | Hallazgo | Alcance | Dónde quedó resuelto |
+|---|---|---|---|
+| 1 | El bind mount de Windows no entrega eventos inotify dentro del contenedor: el watcher de webpack nunca despertaba, el navegador seguía sirviendo un bundle viejo y el registro repetía el `compiled successfully` anterior. Sin esto **ninguna tarea posterior era verificable** | Entorno — el shell y los tres remotes | `watchOptions: { poll: 1000, ignored: /node_modules/ }`, decisión **D-15** del `design.md` §3.2 y hallazgo de entorno al final de esta bitácora |
+| 2 | El escapado de comillas de PowerShell mutila el JSON en línea de `curl.exe`: el primer POST por el proxy respondió `400 DATOS_INVALIDOS` **por el escapado, no por el código** | Entorno — todas las verificaciones con cuerpo JSON | Se pasa el cuerpo con `--data "@archivo.json"`; anotado como hallazgo de entorno |
+| 3 | Bug del `SyntheticEvent` al cerrar sesión (T5): el evento del `onClick` de la cabecera llegaba como argumento a `cerrarSesion(aviso)`, se guardaba en el estado y React intentaba pintarlo como texto (`Objects are not valid as a React child`). **Compilaba sin errores** y solo apareció al ejecutarlo en el navegador | Código — `App.jsx` | `cerrarSesion()` sin parámetros para el `onClick` y la prop `onLogout`; `cerrarSesionConAviso(aviso)` para el camino de sesión expirada (P-08) |
+| 4 | El overlay del dev server tapaba la pantalla con el `ScriptExternalLoadError` de un remote que `BordeError` ya había capturado y mostrado como "Modulo no disponible": ruido sobre un error ya manejado, y en la demo en vivo haría parecer un fallo el comportamiento esperado de HU-06 | Entorno — el shell y los tres remotes | `devServer.client.overlay.runtimeErrors: false`, decisión **D-16**. Los errores siguen apareciendo en la consola del navegador, así que no se pierde diagnóstico |
+
+**Observación:** esta spec cambió el criterio de verificación del proyecto. En los cuatro
+microservicios, la prueba de una tarea era la **salida de un comando**: un `curl.exe` con su
+código HTTP y su JSON, o un `SELECT` contra la base. En el frontend, el equivalente natural
+—el `compiled successfully` del contenedor— **no prueba comportamiento**: prueba que el código
+compila. Tres de los cuatro hallazgos (1, 3 y 4) solo aparecieron al abrir el navegador, y el
+hallazgo 3 es el caso límite: compiló limpio en T2, T3, T4 y T5, y era un error que rompía la
+pantalla en el primer clic. La consecuencia práctica para las tres specs de remotes es que
+cada tarea con interacción necesita, además del log, su paso de navegador ejecutado por el
+responsable.
+
+**Estado de la spec 06.** Las siete tareas fueron ejecutadas y verificadas con salida real: el
+shell corre en `http://localhost:3000` como servicio de `docker-compose.yml`, el proxy alcanza
+`ms-usuarios` por nombre de contenedor, el inicio de sesión y el registro funcionan contra las
+dos rutas públicas del contrato, el menú filtra por rol, la vista inicial es la bienvenida y
+los tres módulos muestran "Modulo no disponible" —que es el criterio de aceptación de HU-06
+mientras los remotes no existan (P-04)—. El recorrido completo de navegador de T7 queda a
+cargo del responsable.
+
+**Lo que esta spec dejó pendiente a propósito:** los tres remotes (`mf-reservas`,
+`mf-administracion`, `mf-reportes`) y el **gateway Nginx**, que se crea en la sección 5 de
+integración cuando existan los cuatro microfrontends; hasta entonces cada microfrontend
+resuelve `/api` con su propio `devServer.proxy` (P-02, con fecha de revisión escrita en el
+`requirements.md` §8). El código del shell tiene además una función sin llamador a propósito:
+`manejarSesionExpirada` (P-08), porque las dos rutas del shell son públicas y ningún `401` de
+token vencido puede llegarle; la estrenan los remotes al recibir un `401` y llamar `onLogout`.
+
 ---
 
 **Hallazgos de entorno (aplican a todas las specs):**
