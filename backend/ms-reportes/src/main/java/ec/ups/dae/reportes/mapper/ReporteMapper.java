@@ -1,7 +1,9 @@
 package ec.ups.dae.reportes.mapper;
 
 import ec.ups.dae.reportes.dto.CanchaExterna;
+import ec.ups.dae.reportes.dto.OcupacionItem;
 import ec.ups.dae.reportes.dto.ReservasItem;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,5 +18,11 @@ public class ReporteMapper {
 
     public ReservasItem aReservasItem(CanchaExterna cancha, long totalReservas) {
         return new ReservasItem(cancha.canchaId(), cancha.nombre(), cancha.deporte(), totalReservas);
+    }
+
+    public OcupacionItem aOcupacionItem(CanchaExterna cancha, long horasReservadas,
+                                        long horasDisponibles, BigDecimal porcentajeOcupacion) {
+        return new OcupacionItem(cancha.canchaId(), cancha.nombre(), cancha.deporte(),
+                horasReservadas, horasDisponibles, porcentajeOcupacion);
     }
 }

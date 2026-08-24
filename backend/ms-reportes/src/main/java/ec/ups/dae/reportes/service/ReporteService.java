@@ -3,6 +3,7 @@ package ec.ups.dae.reportes.service;
 import ec.ups.dae.reportes.client.CanchasClient;
 import ec.ups.dae.reportes.client.ReservasClient;
 import ec.ups.dae.reportes.dto.CanchaExterna;
+import ec.ups.dae.reportes.dto.OcupacionItem;
 import ec.ups.dae.reportes.dto.ReservaExterna;
 import ec.ups.dae.reportes.dto.ReservasItem;
 import ec.ups.dae.reportes.mapper.ReporteMapper;
@@ -41,12 +42,34 @@ public class ReporteService {
     private final CanchasClient canchasClient;
     private final ReservasClient reservasClient;
     private final ReporteMapper reporteMapper;
+    private final CalculadoraOcupacion calculadoraOcupacion;
 
     public ReporteService(CanchasClient canchasClient, ReservasClient reservasClient,
-                          ReporteMapper reporteMapper) {
+                          ReporteMapper reporteMapper, CalculadoraOcupacion calculadoraOcupacion) {
         this.canchasClient = canchasClient;
         this.reservasClient = reservasClient;
         this.reporteMapper = reporteMapper;
+        this.calculadoraOcupacion = calculadoraOcupacion;
+    }
+
+    /**
+     * Ocupacion por cancha en el rango (HU-01). horasReservadas es un conteo de reservas
+     * porque cada bloque dura exactamente una hora (RN-01, respaldado por
+     * ck_reserva_bloque_una_hora en reservas_db): horaInicio y horaFin no intervienen.
+     */
+    public List<OcupacionItem> ocupacionPorCancha(LocalDate desde, LocalDate hasta) {
+        List<CanchaExterna> canchas = canchasClient.listarCanchas();
+        List<ReservaExterna> reservas = reservasClient.listarTodas();
+        Map<Long, Long> conteo = contarPorCancha(canchas, reservas, desde, hasta, ESTADOS_QUE_OCUPAN);
+        long dias = calculadoraOcupacion.diasDelRango(desde, hasta);
+        return canchas.stream()
+                .map(cancha -> {
+                    long horasReservadas = conteo.getOrDefault(cancha.canchaId(), 0L);
+                    long horasDisponibles = calculadoraOcupacion.horasDisponibles(cancha, dias);
+                    return reporteMapper.aOcupacionItem(cancha, horasReservadas, horasDisponibles,
+                            calculadoraOcupacion.porcentajeOcupacion(horasReservadas, horasDisponibles));
+                })
+                .toList();
     }
 
     /**
