@@ -37,17 +37,26 @@ public class SeguridadConfig {
                 .authorizeHttpRequests(rutas -> rutas
                         // Sin estas tres, springdoc responde 401 y E-08 no se puede demostrar.
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // Listado global del sistema: solo ADMIN. Es la unica restriccion por
-                        // rol de este servicio (design seccion 5.3).
-                        .requestMatchers(HttpMethod.GET, "/api/reservas").hasRole("ADMIN")
-                        // Disponibilidad, historial propio y alta: ADMIN y USUARIO. El ADMIN
+                        // Listado global del sistema: ADMIN, y desde la spec 05 tambien el rol
+                        // SERVICIO, que es como ms-reportes lee las reservas para agregar sus
+                        // tres reportes (decision P-01). SERVICIO no sustituye a ADMIN: se suma
+                        // como consumidor interno de esta unica ruta de lectura.
+                        .requestMatchers(HttpMethod.GET, "/api/reservas").hasAnyRole("ADMIN", "SERVICIO")
+                        // Las otras cuatro rutas son de personas: ADMIN y USUARIO. El ADMIN
                         // tambien reserva y tiene historial propio (decision D-08).
-                        .requestMatchers(HttpMethod.GET, "/api/reservas/disponibilidad").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/reservas/mias").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/reservas").authenticated()
+                        //
+                        // Antes decian .authenticated() y bastaba, porque FiltroToken descartaba
+                        // el token SERVICIO antes de autenticarlo. Ahora que si lo autentica,
+                        // .authenticated() lo dejaria pasar: POST /api/reservas crearia una
+                        // reserva con usuarioId nulo y /mias no tendria de quien listar. De ahi
+                        // que se nombren los dos roles de forma explicita (design seccion 8 de
+                        // la spec 05).
+                        .requestMatchers(HttpMethod.GET, "/api/reservas/disponibilidad").hasAnyRole("ADMIN", "USUARIO")
+                        .requestMatchers(HttpMethod.GET, "/api/reservas/mias").hasAnyRole("ADMIN", "USUARIO")
+                        .requestMatchers(HttpMethod.POST, "/api/reservas").hasAnyRole("ADMIN", "USUARIO")
                         // Cancelacion: ambos roles. La propiedad de la reserva es una regla de
                         // negocio y la comprueba el servicio, no la cadena (RN-03, design D-07).
-                        .requestMatchers(HttpMethod.PATCH, "/api/reservas/*/cancelacion").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/reservas/*/cancelacion").hasAnyRole("ADMIN", "USUARIO")
                         .anyRequest().authenticated())
                 .exceptionHandling(manejo -> manejo
                         .authenticationEntryPoint(puntoDeEntrada())
