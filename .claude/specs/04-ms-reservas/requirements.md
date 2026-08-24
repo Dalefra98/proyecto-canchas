@@ -354,12 +354,40 @@ emitido por `ms-usuarios`, para cumplir RN-03 sin acoplar los servicios.
   enviado por el cliente.
 - **SI** el claim `rol` es `USUARIO` y la operacion es `GET /api/reservas`, **ENTONCES**
   `403` con `codigo = SIN_PERMISO`. Es la unica restriccion por rol de este servicio.
-- **SI** el token entrante trae `rol = SERVICIO`, **ENTONCES** `ms-reservas` lo rechaza con
+- ~~**SI** el token entrante trae `rol = SERVICIO`, **ENTONCES** `ms-reservas` lo rechaza con
   `401 NO_AUTENTICADO`: ningun endpoint de este servicio se consume con token de servicio,
   y las operaciones sin `sub` no tienen dueno. `ms-reservas` **emite** tokens `SERVICIO`,
-  no los acepta.
+  no los acepta.~~ **REVISADO el 23/08/2026 por la spec 05 — ver la nota de abajo.**
+- **SI** el token entrante trae `rol = SERVICIO` y la operacion es `GET /api/reservas`,
+  **ENTONCES** `ms-reservas` lo **acepta** y devuelve el listado global, sin exigir el claim
+  `sub` (decision P-01 de la spec 05).
+- **SI** el token entrante trae `rol = SERVICIO` y la operacion es cualquiera de las otras
+  cuatro rutas, **ENTONCES** `401 NO_AUTENTICADO`: `POST /api/reservas` y
+  `PATCH /api/reservas/{id}/cancelacion` escriben, `GET /api/reservas/mias` necesita un
+  `sub` que el token de servicio no trae, y `GET /api/reservas/disponibilidad` no la consume
+  ningun servicio interno.
 - **CUANDO** se consulte la documentacion `springdoc-openapi`, **ENTONCES** sus rutas
   estaran abiertas sin token, igual que en `ms-usuarios` y `ms-canchas`.
+
+> **Nota de revision — 23/08/2026, decision P-01 de la spec 05 (`ms-reportes`).**
+>
+> Esta HU se cerro afirmando que `ms-reservas` **emite** tokens `SERVICIO` pero **no los
+> acepta**. Con eso, `ms-reportes` se quedaba sin ninguna credencial para leer
+> `GET /api/reservas`, que es ADMIN y es su unica fuente de datos.
+>
+> El responsable eligio la salida (a): `ms-reservas` acepta `rol = SERVICIO` en
+> `GET /api/reservas`, solo lectura. Se descarto la salida (b) —que `ms-reportes` reenviara
+> el token del ADMIN que pide el reporte— porque acopla `ms-reportes` a la sesion de quien
+> pregunta y contradice C-01 de la spec 03, que ya establecio que las llamadas internas no
+> propagan el token del usuario final. Mantener un unico mecanismo en todo el sistema vale
+> mas que no tocar una spec cerrada.
+>
+> **Alcance exacto del cambio en `ms-reservas`**, que ejecuta la spec 05 y no esta permitido
+> ampliar: `FiltroToken` acepta `SERVICIO` sin exigir `sub`, y `SeguridadConfig` lo admite
+> unicamente en `GET /api/reservas`. Nada mas de este microservicio se toca.
+>
+> `docs/contratos/README.md` quedo actualizado el mismo dia con la tabla de rutas que
+> aceptan `SERVICIO` y con la regla de que emitir tokens de servicio no obliga a aceptarlos.
 
 ### HU-09 — Errores uniformes y sin stacktrace
 
@@ -508,6 +536,12 @@ del usuario que su `usuarioId`.
 `ms-reportes` (spec 05) consumira `ms-reservas`, pero esta spec no implementa nada para el
 ni le abre endpoints nuevos. Si `ms-reportes` necesitara llamar con token de servicio, el
 mecanismo de D-01 ya esta congelado en el contrato y no se vuelve a decidir.
+
+**Corregido el 23/08/2026 (decision P-01 de la spec 05):** si hizo falta abrirle algo. El
+mecanismo de D-01 estaba congelado, pero HU-08 lo rechazaba en la entrada, asi que
+`ms-reportes` no tenia credencial valida. `GET /api/reservas` pasa a aceptar
+`rol = SERVICIO`; el cambio lo ejecuta la spec 05 y esta acotado a `FiltroToken` y
+`SeguridadConfig`. Ver la nota de revision al final de HU-08.
 
 ### 6.1 C-02 — Precedencia entre `RESERVA_PASADA` y `RESERVA_NO_CANCELABLE`
 

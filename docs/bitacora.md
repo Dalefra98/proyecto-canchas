@@ -162,6 +162,25 @@ misma razón que la spec 04, tener un horario distinto al de las tres canchas de
 
 ---
 
+## Spec 05 — ms-reportes
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 23/08/2026 | C1 | Generar requirements.md de ms-reportes | Sí, tras responder 12 preguntas | La IA se detuvo en 12 datos faltantes, cuatro de ellos bloqueantes. El hallazgo de fondo fue una **contradicción entre dos specs ya cerradas**: la spec 04 decidió que `ms-reservas` rechaza todo token `SERVICIO`, y `GET /api/reservas` es ADMIN, así que **`ms-reportes` no tenía ninguna credencial válida** para leer su única fuente de datos. También se detectó que la fórmula de `horasDisponibles` no existe en ningún documento y que el ejemplo del contrato (`45`) no cuadra con las 15 h diarias del seed |
+| 2 | 23/08/2026 | C1 | Responder las doce preguntas y actualizar contrato, CLAUDE.md y la spec 04 | Sí | El responsable eligió abrir `GET /api/reservas` al rol `SERVICIO` en vez de reenviar el token del ADMIN, para no contradecir C-01 de la spec 03: **un solo mecanismo en todo el sistema vale más que no tocar una spec cerrada**. Se decidió además contar `CONFIRMADA` + `FINALIZADA` en ocupación y reservas (contar solo `CONFIRMADA` daría cero en todo rango pasado), no restar bloqueos de `horasDisponibles`, y asumir por escrito que filtrar el rango en memoria **no escala**. Tres archivos fuera de la spec quedaron modificados: el contrato, `CLAUDE.md` §4 (capa `client`) y la HU-08 de la spec 04, con nota de revisión |
+
+| 3 | 23/08/2026 | C2 | Generar design.md con modelo, DTOs, endpoints, excepciones y decisiones | Sí | Al detallar el cambio de P-01 apareció una **consecuencia que C1 no había visto**: las otras cuatro rutas de `ms-reservas` son `.authenticated()` y hoy rechazan el token `SERVICIO` solo porque el filtro lo descarta antes. En cuanto el filtro lo autentique, `POST /api/reservas` con token de servicio llegaría al controlador y crearía una reserva con `usuarioId` **nulo**. El diseño lo cierra en el mismo paso pasando esas cuatro reglas a `hasAnyRole("ADMIN", "USUARIO")` |
+
+**Observación:** esta spec confirmó que una compuerta también sirve para **releer lo ya
+cerrado**. La spec 04 previó el caso ("si `ms-reportes` necesitara llamar con token de
+servicio, el mecanismo ya está congelado") y aun así lo dejó roto, porque congeló el
+mecanismo de emisión y lo rechazó en la entrada. No es un error de código: las dos frases
+son correctas por separado y el defecto solo aparece al escribir el consumidor.
+
+---
+
 **Hallazgos de entorno (aplican a todas las specs):**
 - `pg_isready` responde OK mientras Postgres aun ejecuta los scripts de
   `docker-entrypoint-initdb.d`. El `healthcheck` del compose da un falso positivo,

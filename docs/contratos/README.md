@@ -59,6 +59,22 @@ Notas de uso:
   `PUT`, `PATCH`, `DELETE`) responde `403 SIN_PERMISO`. Los roles de las tablas de rutas
   siguen refiriéndose solo a `ADMIN` y `USUARIO`: `SERVICIO` no sustituye a ninguno de los
   dos, se suma como consumidor interno de las rutas de lectura.
+- El token `SERVICIO` **no habilita toda ruta `GET` del sistema**: cada microservicio
+  declara en qué rutas de lectura lo acepta. Rutas que hoy lo aceptan:
+
+  | Servicio | Ruta | Motivo |
+  |---|---|---|
+  | ms-canchas | `GET /api/canchas`, `GET /api/canchas/{canchaId}`, `GET /api/canchas/{canchaId}/bloqueos` | ms-reservas calcula disponibilidad; ms-reportes calcula ocupación |
+  | ms-reservas | `GET /api/reservas` | ms-reportes agrega los tres reportes |
+
+  `GET /api/reservas/mias` y `GET /api/reservas/disponibilidad` **no** aceptan `SERVICIO`:
+  la primera necesita un `sub` que el token de servicio no trae, y la segunda no la consume
+  ningún servicio interno. Las rutas de escritura de todos los servicios responden
+  `403 SIN_PERMISO`.
+- Un microservicio **nunca propaga el token del usuario final** hacia otro microservicio.
+  Toda llamada interna se autentica con un token `SERVICIO` recién emitido. Un servicio que
+  **emite** tokens `SERVICIO` no está obligado a **aceptarlos**: `ms-reportes` los emite y
+  los rechaza con `401 NO_AUTENTICADO` si llegan a sus rutas.
 
 ## Payloads congelados
 
@@ -136,9 +152,28 @@ respuesta son los de la tabla "Formato de error".
 | GET | `/api/reservas` | ADMIN | 200, 401, 403 |
 | GET | `/api/reservas/mias` | USUARIO | 200, 401 |
 | PATCH | `/api/reservas/{id}/cancelacion` | ADMIN, USUARIO | 200, 401, 403, 404, 409 |
-| GET | `/api/reportes/ocupacion?desde&hasta` | ADMIN | 200, 400, 401, 403 |
-| GET | `/api/reportes/reservas?desde&hasta` | ADMIN | 200, 400, 401, 403 |
-| GET | `/api/reportes/cancelaciones?desde&hasta` | ADMIN | 200, 400, 401, 403 |
+| GET | `/api/reportes/ocupacion?desde&hasta` | ADMIN | 200, 400, 401, 403, 500 |
+| GET | `/api/reportes/reservas?desde&hasta` | ADMIN | 200, 400, 401, 403, 500 |
+| GET | `/api/reportes/cancelaciones?desde&hasta` | ADMIN | 200, 400, 401, 403, 500 |
+
+Notas de las rutas de reportes:
+
+- `desde` y `hasta` son **obligatorios** y ambos extremos son **inclusivos**. Formato
+  `AAAA-MM-DD`. `desde` posterior a `hasta` responde `400 DATOS_INVALIDOS`. No hay rango
+  máximo ni restricción sobre fechas futuras.
+- Las tres rutas declaran `500 ERROR_INTERNO` de forma explícita porque `ms-reportes`
+  depende de dos servicios por HTTP: si `ms-canchas` o `ms-reservas` no responden, fallan o
+  agotan el tiempo de espera, la respuesta es `500 ERROR_INTERNO`. Nunca un reporte parcial.
+- `porcentajeOcupacion` se devuelve con **un decimal**, redondeo `HALF_UP`.
+- `horasDisponibles` = `(horaCierre − horaApertura)` × número de días del rango. **No** se
+  restan los bloqueos de mantenimiento. Los valores del ejemplo de `ReporteOcupacionResponse`
+  son ilustrativos y no corresponden al seed.
+- `horasReservadas` y `totalReservas` cuentan las reservas en estado `CONFIRMADA` y
+  `FINALIZADA`, y excluyen `CANCELADA`. `totalCancelaciones` cuenta solo `CANCELADA`.
+- El rango filtra por la `fecha` de la reserva. `reservas_db` no almacena fecha de
+  cancelación, así que una cancelación se imputa a la fecha de la reserva cancelada.
+- `items` incluye **todas** las canchas, incluidas las que tienen `activa = false` y las que
+  no tuvieron actividad en el rango, estas últimas con sus contadores en `0`.
 
 Notas de las rutas de canchas:
 
@@ -202,3 +237,5 @@ Props que el shell entrega a todo remote:
 | 23/08/2026 | `GET /api/canchas` y `GET /api/canchas/{canchaId}` filtran por rol sin parámetro: el USUARIO solo ve canchas `activa = true` y recibe `404` en una inactiva; el ADMIN ve todas | David Aristega | 03-ms-canchas |
 | 23/08/2026 | `rol` admite el tercer valor `SERVICIO` para el token de servicio de las llamadas internas entre microservicios (JWT HS256 con el mismo `JWT_SECRET`, sin `sub`, `exp` de 5 minutos): solo lectura y con vista completa del catálogo; en cualquier ruta de escritura responde `403 SIN_PERMISO`. Resuelve el asunto A-01 que dejó abierto la spec 03 y obliga a modificar el filtro de `ms-canchas` | David Aristega | 03-ms-canchas, 04-ms-reservas |
 | 23/08/2026 | Se agrega el código de error `RESERVA_NO_CANCELABLE` (HTTP 409) para cancelar una reserva que ya no está `CONFIRMADA`; `PATCH /api/reservas/{id}/cancelacion` ya declaraba `409` | David Aristega | 04-ms-reservas |
+| 23/08/2026 | El token `SERVICIO` deja de ser "toda ruta `GET`": se agrega la tabla de rutas que lo aceptan y se declara que `ms-reservas` lo admite en `GET /api/reservas` (solo lectura), no en `/mias` ni en `/disponibilidad`. Se deja escrito que ningún microservicio propaga el token del usuario final y que emitir tokens `SERVICIO` no obliga a aceptarlos. Decisión P-01 de la spec 05; obliga a modificar `FiltroToken` y `SeguridadConfig` de `ms-reservas` | David Aristega | 04-ms-reservas, 05-ms-reportes |
+| 23/08/2026 | Las tres rutas de `/api/reportes` suman `500` a sus respuestas declaradas (`ERROR_INTERNO` ya existía como código transversal) y se agregan las "Notas de las rutas de reportes": rango inclusivo y obligatorio, fórmula de `horasDisponibles` sin restar bloqueos, estados que cuentan en cada reporte, un decimal con `HALF_UP`, imputación de la cancelación a la `fecha` de la reserva y presencia de todas las canchas en `items`. Decisiones P-03 a P-09 de la spec 05 | David Aristega | 05-ms-reportes |

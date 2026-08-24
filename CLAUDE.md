@@ -157,6 +157,22 @@ frontend/<nombre>/
   webpack.config.js
 ```
 
+**Capa `client` — solo para microservicios sin base de datos propia**
+
+Un microservicio que no tiene base propia (hoy solo `ms-reportes`) sustituye
+`repository/` y `entity/` por `client/`:
+
+```
+backend/ms-reportes/src/main/java/ec/ups/dae/reportes/
+  controller/  service/  client/  dto/  mapper/  config/  exception/
+```
+
+`client/` es la **única** capa que hace HTTP saliente hacia otro microservicio, igual que
+`repository/` es la única que toca la base en los demás. La cadena sigue siendo
+`controller -> service -> client`. Un microservicio con base propia conserva su estructura
+tal cual: `ms-reservas` deja su `CanchasClient` donde está (`service/`) y no se reacomoda
+por esta regla.
+
 **Convenciones**
 - Rutas: `/api/<dominio>/<recurso>`, plural y minúsculas.
 - Códigos: `400` validación · `401` sin token · `403` sin permiso · `404` no existe ·
