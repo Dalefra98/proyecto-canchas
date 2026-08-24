@@ -130,6 +130,30 @@ services:
       ms-reportes:
         condition: service_started
 
+  mf-reservas:
+    # Mismo patron del servicio shell (P-07): webpack serve necesita el codigo
+    # vivo, montado por volumen, para recompilar al guardar.
+    image: node:20-alpine
+    container_name: canchas-mf-reservas
+    working_dir: /app
+    command: sh -c "npm install && npx webpack serve --mode development"
+    volumes:
+      - ./frontend/mf-reservas:/app
+      # Volumen anonimo: sin el, el node_modules inexistente del host tapa el
+      # que instala el contenedor.
+      - mf_reservas_node_modules:/app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      # Solo los dos microservicios que este remote consume (P-07):
+      # GET /api/canchas y las cuatro rutas de /api/reservas. service_started
+      # porque ninguno declara healthcheck y el devServer arranca igual.
+      ms-canchas:
+        condition: service_started
+      ms-reservas:
+        condition: service_started
+
 volumes:
   pgdata:
   shell_node_modules:
+  mf_reservas_node_modules:
