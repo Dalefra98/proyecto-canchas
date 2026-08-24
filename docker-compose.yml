@@ -103,5 +103,33 @@ services:
       postgres:
         condition: service_healthy
 
+  shell:
+    # Sin build ni Dockerfile: webpack serve necesita el codigo vivo, montado por
+    # volumen, para recompilar al guardar (design D-03).
+    image: node:20-alpine
+    container_name: canchas-shell
+    working_dir: /app
+    command: sh -c "npm install && npx webpack serve --mode development"
+    volumes:
+      - ./frontend/shell:/app
+      # Volumen anonimo: sin el, el node_modules inexistente del host tapa el
+      # que instala el contenedor.
+      - shell_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      # El devServer proxya /api hacia los cuatro microservicios por nombre de
+      # contenedor. service_started y no service_healthy: ninguno declara
+      # healthcheck y el devServer arranca igual aunque un destino no responda.
+      ms-usuarios:
+        condition: service_started
+      ms-canchas:
+        condition: service_started
+      ms-reservas:
+        condition: service_started
+      ms-reportes:
+        condition: service_started
+
 volumes:
   pgdata:
+  shell_node_modules:
