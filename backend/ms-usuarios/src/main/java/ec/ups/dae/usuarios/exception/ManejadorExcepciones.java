@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Traduce toda excepcion al formato { "codigo", "mensaje" } del contrato. El cliente nunca
@@ -89,6 +90,16 @@ public class ManejadorExcepciones {
     public ResponseEntity<ErrorResponse> integridadViolada(DataIntegrityViolationException excepcion) {
         LOG.warn("Violacion de integridad al guardar un usuario", excepcion);
         return respuesta(HttpStatus.CONFLICT, EMAIL_DUPLICADO, "El correo ya esta registrado");
+    }
+
+    /**
+     * Ruta inexistente (asunto A-02 de la spec 04). Spring lanza NoResourceFoundException al no
+     * encontrar handler ni recurso estatico; sin este manejador caeria en la red de seguridad y
+     * saldria como 500. Un recurso que no existe es un 404, en los tres microservicios.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> rutaNoEncontrada(NoResourceFoundException excepcion) {
+        return respuesta(HttpStatus.NOT_FOUND, NO_ENCONTRADO, "El recurso solicitado no existe");
     }
 
     @ExceptionHandler(Exception.class)

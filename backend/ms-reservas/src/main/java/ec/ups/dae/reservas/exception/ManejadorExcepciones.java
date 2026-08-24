@@ -14,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Traduce toda excepcion al formato { "codigo", "mensaje" } del contrato. El cliente nunca
@@ -168,6 +169,16 @@ public class ManejadorExcepciones {
     public ResponseEntity<ErrorResponse> catalogoNoDisponible(CatalogoNoDisponibleException excepcion) {
         LOG.error("Fallo al consultar ms-canchas", excepcion);
         return respuesta(HttpStatus.INTERNAL_SERVER_ERROR, ERROR_INTERNO, CATALOGO_CAIDO);
+    }
+
+    /**
+     * Ruta inexistente (asunto A-02 de la spec 04). Spring lanza NoResourceFoundException al no
+     * encontrar handler ni recurso estatico; sin este manejador caeria en la red de seguridad y
+     * saldria como 500. Un recurso que no existe es un 404, en los tres microservicios.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> rutaNoEncontrada(NoResourceFoundException excepcion) {
+        return respuesta(HttpStatus.NOT_FOUND, NO_ENCONTRADO, "El recurso solicitado no existe");
     }
 
     @ExceptionHandler(Exception.class)
