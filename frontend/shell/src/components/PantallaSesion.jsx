@@ -14,6 +14,10 @@ function PantallaSesion({ aviso, onIniciarSesion, onIrARegistro }) {
   async function enviar(evento) {
     evento.preventDefault();
 
+    // El error del servidor se limpia ANTES de validar: si no, el 401 anterior
+    // convive con los avisos de campo obligatorio del intento nuevo.
+    setError(null);
+
     const emailVacio = email.trim() === "";
     const passwordVacio = password === "";
     setFaltantes({ email: emailVacio, password: passwordVacio });
@@ -21,7 +25,6 @@ function PantallaSesion({ aviso, onIniciarSesion, onIrARegistro }) {
       return;
     }
 
-    setError(null);
     setEnviando(true);
     try {
       await onIniciarSesion(email.trim(), password);

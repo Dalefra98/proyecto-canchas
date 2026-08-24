@@ -1,0 +1,223 @@
+/* Unico archivo de estilos del shell (D-13). CSS plano, sin librerias de UI ni
+   preprocesador. Las clases son exactamente las que usan los ocho componentes. */
+
+:root {
+  --color-fondo: #f4f6f8;
+  --color-superficie: #ffffff;
+  --color-borde: #d3dae0;
+  --color-texto: #1f2933;
+  --color-tenue: #5c6b7a;
+  --color-principal: #1f6f4a;
+  --color-principal-oscuro: #17563a;
+  --color-error: #a4262c;
+  --color-error-fondo: #fdeceb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: Segoe UI, Arial, sans-serif;
+  font-size: 15px;
+}
+
+h1,
+h2 {
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+/* Inicio de sesion y registro */
+
+.pantalla-acceso {
+  max-width: 380px;
+  margin: 60px auto;
+  padding: 28px;
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: 6px;
+}
+
+.pantalla-acceso h1 {
+  font-size: 19px;
+  color: var(--color-principal);
+}
+
+.pantalla-acceso h2 {
+  font-size: 15px;
+  color: var(--color-tenue);
+  font-weight: 400;
+  margin-bottom: 20px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--color-tenue);
+}
+
+input {
+  margin-bottom: 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-borde);
+  border-radius: 4px;
+  font-size: 15px;
+  font-family: inherit;
+}
+
+input:focus {
+  outline: 2px solid var(--color-principal);
+  outline-offset: -1px;
+}
+
+button {
+  padding: 9px 16px;
+  border: 1px solid var(--color-principal);
+  border-radius: 4px;
+  background-color: var(--color-principal);
+  color: #ffffff;
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:hover:enabled {
+  background-color: var(--color-principal-oscuro);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Boton que se comporta como enlace: no hay enrutador (P-05), asi que la
+   navegacion entre inicio de sesion y registro es un boton. */
+.enlace {
+  margin-top: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-principal);
+  text-decoration: underline;
+  font-size: 13px;
+}
+
+.enlace:hover:enabled {
+  background: none;
+  color: var(--color-principal-oscuro);
+}
+
+/* Mensajes */
+
+.mensaje-error {
+  margin: 0 0 14px 0;
+  padding: 9px 10px;
+  border-left: 3px solid var(--color-error);
+  background-color: var(--color-error-fondo);
+  color: var(--color-error);
+  font-size: 14px;
+}
+
+.campo-invalido {
+  margin: -10px 0 14px 0;
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.aviso {
+  margin: 0 0 16px 0;
+  padding: 9px 10px;
+  border-left: 3px solid var(--color-principal);
+  background-color: #eaf3ee;
+  font-size: 14px;
+}
+
+/* Layout con sesion activa */
+
+.aplicacion {
+  min-height: 100vh;
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background-color: var(--color-principal);
+  color: #ffffff;
+}
+
+.cabecera .titulo {
+  font-size: 17px;
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.cabecera .usuario-en-sesion {
+  font-size: 14px;
+}
+
+.cabecera button {
+  border-color: #ffffff;
+  background-color: transparent;
+  font-size: 14px;
+  padding: 6px 12px;
+}
+
+.cabecera button:hover:enabled {
+  background-color: var(--color-principal-oscuro);
+}
+
+.menu-modulos {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px;
+  background-color: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.menu-modulos button {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--color-texto);
+  font-size: 14px;
+  padding: 7px 14px;
+}
+
+.menu-modulos button:hover:enabled {
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
+}
+
+.menu-modulos button.activo {
+  border-color: var(--color-principal);
+  color: var(--color-principal);
+  font-weight: 600;
+}
+
+.bienvenida,
+.contenido-modulo {
+  margin: 24px 20px;
+  padding: 20px;
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: 6px;
+}
+
+.bienvenida h2 {
+  font-size: 17px;
+}
+
+.bienvenida p {
+  margin: 0;
+  color: var(--color-tenue);
+}

@@ -19,6 +19,10 @@ function PantallaRegistro({ onRegistrar, onVolver }) {
   async function enviar(evento) {
     evento.preventDefault();
 
+    // Igual que en PantallaSesion: el error del servidor —aqui, el 409 junto al
+    // campo email— se limpia antes de validar, no despues.
+    setError(null);
+
     const nombreVacio = nombre.trim() === "";
     const emailVacio = email.trim() === "";
     const passwordVacio = password === "";
@@ -27,7 +31,6 @@ function PantallaRegistro({ onRegistrar, onVolver }) {
       return;
     }
 
-    setError(null);
     setEnviando(true);
     try {
       await onRegistrar(nombre.trim(), email.trim(), password);
