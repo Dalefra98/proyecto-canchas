@@ -231,3 +231,15 @@ son correctas por separado y el defecto solo aparece al escribir el consumidor.
   tres remotes, y escrito en el `design.md` §3.2 de esa spec. Al comparar dos corridas del
   registro conviene usar `docker compose logs --timestamps`: es la forma de notar que la
   última compilación es anterior al último guardado.
+- **Un `compiled successfully` no prueba que la aplicación funcione.** En la T5 de la spec 06,
+  `cerrarSesion(aviso)` recibía como `aviso` el `SyntheticEvent` que React pasa al `onClick`
+  del botón de la cabecera, lo guardaba en el estado y `PantallaSesion` lo intentaba pintar
+  como texto: `Objects are not valid as a React child (found: object with keys {_reactName,
+  _targetInst, type, nativeEvent, ...})`. El defecto es de firma —una función usada a la vez
+  como manejador de evento y como receptora de un texto— y webpack no puede verlo: compiló
+  limpio en T2, T3, T4 y T5. **Es la primera vez en el proyecto que la verificación por log
+  resulta insuficiente**, y apareció solo al ejecutar el flujo en el navegador. Consecuencia
+  para el resto del frontend: en un microfrontend, el log del contenedor verifica que el
+  código *compila*, no que *funcione*; toda tarea con interacción necesita además su paso de
+  navegador. Los cuatro microservicios no tenían este hueco porque su verificación era una
+  petición real con `curl.exe`, no una compilación.

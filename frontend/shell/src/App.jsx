@@ -7,6 +7,7 @@ import PantallaRegistro from "./components/PantallaRegistro";
 import Cabecera from "./components/Cabecera";
 import MenuModulos, { modulosDelRol } from "./components/MenuModulos";
 import PantallaBienvenida from "./components/PantallaBienvenida";
+import ContenedorRemoto from "./components/ContenedorRemoto";
 
 // D-08: el estado de la sesion vive aqui y baja por props.
 // D-09: el mapeo de LoginResponse a la prop usuario son estos tres campos.
@@ -153,10 +154,12 @@ function App() {
       {vistaEfectiva === "bienvenida" ? (
         <PantallaBienvenida usuario={usuario} />
       ) : (
-        // El montaje real del remote es de la tarea T6.
-        <section className="contenido-modulo">
-          <p>Modulo {vistaEfectiva}: se monta en la tarea T6.</p>
-        </section>
+        <ContenedorRemoto
+          clave={vistaEfectiva}
+          usuario={usuario}
+          token={sesion.token}
+          onLogout={cerrarSesion}
+        />
       )}
     </div>
   );

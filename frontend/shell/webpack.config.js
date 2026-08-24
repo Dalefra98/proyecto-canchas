@@ -71,7 +71,14 @@ module.exports = {
     hot: true,
     client: {
       // El socket de recarga lo abre el navegador: su URL es la del host.
-      webSocketURL: "ws://localhost:3000/ws"
+      webSocketURL: "ws://localhost:3000/ws",
+      overlay: {
+        // El BordeError ya captura y muestra el fallo de un remote: el overlay
+        // taparia la pantalla con un error ya manejado y en la demo pareceria
+        // un fallo lo que es el comportamiento esperado de HU-06. Los errores
+        // siguen saliendo en la consola del navegador.
+        runtimeErrors: false
+      }
     },
     // Destino del proxy: nombres de contenedor. Lo ejecuta webpack serve DENTRO
     // de la red de Docker, al contrario de las URLs de los remotes.
