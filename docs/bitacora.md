@@ -205,3 +205,11 @@ son correctas por separado y el defecto solo aparece al escribir el consumidor.
 - Levantar los tres microservicios a la vez con `docker compose up -d --build` tarda 60–70 s
   cada uno, contra ~11 s cuando se levanta uno solo. Un `curl` inmediato devuelve `HTTP 000`;
   hay que esperar a ver `Started Ms...Application` en el log antes de verificar.
+- Tras reiniciar un microservicio, el que lo consume por HTTP puede devolver `500` en sus
+  **primeras** peticiones aunque la dependencia ya esté arriba: `SimpleClientHttpRequestFactory`
+  (el `HttpURLConnection` del JDK) mantiene conexiones cacheadas contra el contenedor
+  anterior, que están muertas y fallan una vez antes de purgarse. Detectado en la T8 de la
+  spec 05: dos `500` seguidos de un `200`, sin tocar nada. Con la política *sin reintentos*
+  de D-06 ese fallo llega al cliente, y **se acepta**: reintentar ocultaría fallos reales de
+  la dependencia. En la demo, después de `docker compose start` hay que repetir la petición
+  una o dos veces antes de mostrar el `200`. Detallado en el `design.md` §7.1 de la spec 05.

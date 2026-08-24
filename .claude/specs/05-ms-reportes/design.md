@@ -376,6 +376,31 @@ lleno de ceros, y no hay recurso identificable que pueda no existir.
 | D-15 | Una reserva con `canchaId` fuera del catálogo se descarta y se registra `WARN` | Crear una fila con `nombre` y `deporte` nulos | El contrato declara `nombre` y `deporte` como campos presentes. Devolver nulos rompería el payload, y hoy el caso no puede ocurrir porque las canchas se inactivan, nunca se borran |
 | D-16 | El cambio en `ms-reservas` se limita a `FiltroToken` y `SeguridadConfig` | Crear un endpoint interno nuevo en `ms-reservas`, del tipo `/api/reservas/internas` | Un endpoint nuevo no está en el contrato congelado y duplicaría una ruta que ya devuelve exactamente lo necesario. Abrir la existente al rol `SERVICIO` es el cambio más pequeño que resuelve P-01 |
 
+### 7.1 Consecuencia conocida de D-06: conexiones cacheadas tras reiniciar una dependencia
+
+Detectado al ejecutar T8 el 23/08/2026, con salida real. No es un defecto del código: es el
+precio de la política *sin reintentos* que D-06 heredó de la spec 04, y queda escrito aquí
+para que nadie lo diagnostique dos veces.
+
+Tras `docker compose stop ms-canchas` y su posterior `start`, las **primeras** peticiones a
+`ms-reportes` siguen devolviendo `500 ERROR_INTERNO` aunque `ms-canchas` ya haya escrito
+`Started MsCanchasApplication` en su log. La causa es que `SimpleClientHttpRequestFactory`
+—que por debajo es `HttpURLConnection`— mantiene un pool de conexiones **cacheadas contra el
+contenedor anterior**: esas conexiones están muertas y fallan una vez antes de purgarse. En
+T8 fallaron las dos primeras peticiones y la tercera respondió `200`; al repetir las dos
+primeras, respondieron `200` sin ningún cambio.
+
+**Se acepta el comportamiento y no se agrega ningún reintento.** Reintentar
+automáticamente ocultaría fallos reales de la dependencia, que es justo lo que D-08 quiere
+que se vea, y en operación normal los servicios no se reinician. La alternativa —una política
+de reintento o un pool con validación de conexión— quedó fuera de alcance en el
+`requirements.md` §10 y no se reabre.
+
+**Consecuencia práctica para la demo en vivo:** al ejecutar el escenario de dependencia
+caída, después de `docker compose start ms-canchas` hay que **repetir la petición una o dos
+veces** antes de mostrar el `200`. El primer `500` de esa secuencia es la conexión muerta, no
+un servicio caído.
+
 ## 8. Cambio en `ms-reservas` (decisión P-01)
 
 Único archivo de código fuera de `backend/ms-reportes` que esta spec toca. Alcance exacto,
