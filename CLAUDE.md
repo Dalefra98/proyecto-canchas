@@ -201,7 +201,7 @@ no traducir, no inventar.** Si falta un campo, detente y pregunta.
 Contrato de props del shell hacia cualquier remote:
 
 ```jsx
-<RemoteApp usuario={{ id, nombre, rol }} apiBaseUrl="/api" onLogout={fn} />
+<RemoteApp usuario={{ usuarioId, nombre, rol }} token="..." apiBaseUrl="/api" onLogout={fn} />
 ```
 
 ---

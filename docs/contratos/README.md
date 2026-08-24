@@ -217,7 +217,7 @@ Notas de las rutas de canchas:
 Props que el shell entrega a todo remote:
 
 ```jsx
-<RemoteApp usuario={{ id, nombre, rol }} apiBaseUrl="/api" onLogout={fn} />
+<RemoteApp usuario={{ usuarioId, nombre, rol }} token="..." apiBaseUrl="/api" onLogout={fn} />
 ```
 
 ## Registro de cambios
@@ -239,3 +239,4 @@ Props que el shell entrega a todo remote:
 | 23/08/2026 | Se agrega el código de error `RESERVA_NO_CANCELABLE` (HTTP 409) para cancelar una reserva que ya no está `CONFIRMADA`; `PATCH /api/reservas/{id}/cancelacion` ya declaraba `409` | David Aristega | 04-ms-reservas |
 | 23/08/2026 | El token `SERVICIO` deja de ser "toda ruta `GET`": se agrega la tabla de rutas que lo aceptan y se declara que `ms-reservas` lo admite en `GET /api/reservas` (solo lectura), no en `/mias` ni en `/disponibilidad`. Se deja escrito que ningún microservicio propaga el token del usuario final y que emitir tokens `SERVICIO` no obliga a aceptarlos. Decisión P-01 de la spec 05; obliga a modificar `FiltroToken` y `SeguridadConfig` de `ms-reservas` | David Aristega | 04-ms-reservas, 05-ms-reportes |
 | 23/08/2026 | Las tres rutas de `/api/reportes` suman `500` a sus respuestas declaradas (`ERROR_INTERNO` ya existía como código transversal) y se agregan las "Notas de las rutas de reportes": rango inclusivo y obligatorio, fórmula de `horasDisponibles` sin restar bloqueos, estados que cuentan en cada reporte, un decimal con `HALF_UP`, imputación de la cancelación a la `fecha` de la reserva y presencia de todas las canchas en `items`. Decisiones P-03 a P-09 de la spec 05 | David Aristega | 05-ms-reportes |
+| 23/08/2026 | El contrato de props del shell hacia todo remote suma `token` y renombra el identificador de `id` a `usuarioId`, para que un mismo concepto no tenga dos nombres: `usuario={{ usuarioId, nombre, rol }} token="..." apiBaseUrl="/api" onLogout={fn}`. Sin `token` ningun remote puede autenticar sus llamadas a `/api`. Decisiones P-01 y correccion 1 de la spec 06; el mismo cambio queda aplicado en `CLAUDE.md` §5 | David Aristega | 06-shell-module-federation y las tres specs de remotes |
