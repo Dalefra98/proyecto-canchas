@@ -213,3 +213,10 @@ son correctas por separado y el defecto solo aparece al escribir el consumidor.
   de D-06 ese fallo llega al cliente, y **se acepta**: reintentar ocultaría fallos reales de
   la dependencia. En la demo, después de `docker compose start` hay que repetir la petición
   una o dos veces antes de mostrar el `200`. Detallado en el `design.md` §7.1 de la spec 05.
+- `curl.exe` en PowerShell rompe el JSON en línea: PowerShell se come las comillas escapadas y
+  el cuerpo llega mutilado al microservicio, que responde `400 DATOS_INVALIDOS` aunque el
+  código esté correcto. Detectado en la T1 de la spec 06 contra
+  `POST /api/usuarios/sesiones`. La forma que funciona es pasar el cuerpo desde un archivo:
+  `curl.exe -X POST http://localhost:3000/api/usuarios/sesiones -H "Content-Type:
+  application/json" --data "@cuerpo.json"`. Un `400` en una verificación con cuerpo en línea
+  hay que descartarlo como problema de escapado **antes** de tocar el código.
