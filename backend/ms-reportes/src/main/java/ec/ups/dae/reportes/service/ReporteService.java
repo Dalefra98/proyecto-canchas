@@ -2,6 +2,7 @@ package ec.ups.dae.reportes.service;
 
 import ec.ups.dae.reportes.client.CanchasClient;
 import ec.ups.dae.reportes.client.ReservasClient;
+import ec.ups.dae.reportes.dto.CancelacionesItem;
 import ec.ups.dae.reportes.dto.CanchaExterna;
 import ec.ups.dae.reportes.dto.OcupacionItem;
 import ec.ups.dae.reportes.dto.ReservaExterna;
@@ -36,6 +37,9 @@ public class ReporteService {
     // justo lo que un reporte necesita mostrar (decision P-04). CANCELADA tiene su propio
     // reporte y no cuenta aqui, coherente con RN-05.
     private static final Set<String> ESTADOS_QUE_OCUPAN = Set.of("CONFIRMADA", "FINALIZADA");
+
+    // El reporte de cancelaciones (HU-03) cuenta exactamente lo contrario.
+    private static final Set<String> ESTADOS_CANCELADOS = Set.of("CANCELADA");
 
     private static final Set<String> ESTADOS_CONOCIDOS = Set.of("CONFIRMADA", "FINALIZADA", "CANCELADA");
 
@@ -82,6 +86,21 @@ public class ReporteService {
         Map<Long, Long> conteo = contarPorCancha(canchas, reservas, desde, hasta, ESTADOS_QUE_OCUPAN);
         return canchas.stream()
                 .map(cancha -> reporteMapper.aReservasItem(cancha,
+                        conteo.getOrDefault(cancha.canchaId(), 0L)))
+                .toList();
+    }
+
+    /**
+     * Numero de cancelaciones por cancha en el rango (HU-03). El rango filtra por la fecha de
+     * la RESERVA, no por la fecha en que se cancelo: reservas_db no guarda esa segunda fecha
+     * y el contrato no la declara.
+     */
+    public List<CancelacionesItem> cancelacionesPorCancha(LocalDate desde, LocalDate hasta) {
+        List<CanchaExterna> canchas = canchasClient.listarCanchas();
+        List<ReservaExterna> reservas = reservasClient.listarTodas();
+        Map<Long, Long> conteo = contarPorCancha(canchas, reservas, desde, hasta, ESTADOS_CANCELADOS);
+        return canchas.stream()
+                .map(cancha -> reporteMapper.aCancelacionesItem(cancha,
                         conteo.getOrDefault(cancha.canchaId(), 0L)))
                 .toList();
     }

@@ -1,6 +1,7 @@
 package ec.ups.dae.reportes.controller;
 
 import ec.ups.dae.reportes.dto.ErrorResponse;
+import ec.ups.dae.reportes.dto.ReporteCancelacionesResponse;
 import ec.ups.dae.reportes.dto.ReporteOcupacionResponse;
 import ec.ups.dae.reportes.dto.ReporteReservasResponse;
 import ec.ups.dae.reportes.exception.RangoInvalidoException;
@@ -89,6 +90,31 @@ public class ReporteController {
         validarOrden(inicio, fin);
         // desde y hasta se devuelven tal como llegaron, no reformateados (design seccion 4.1).
         return new ReporteReservasResponse(desde, hasta, reporteService.reservasPorCancha(inicio, fin));
+    }
+
+    @Operation(summary = "Numero de cancelaciones por cancha en un rango de fechas",
+            description = "Cuenta solo las reservas en estado CANCELADA. El rango filtra por la fecha "
+                    + "de la reserva, no por la fecha en que se cancelo: reservas_db no almacena esa "
+                    + "segunda fecha. Las filas no llevan deporte.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Reporte generado"),
+            @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS: falta un parametro, "
+                    + "el formato no es AAAA-MM-DD o desde es posterior a hasta",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "NO_AUTENTICADO: falta el token o no es valido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "SIN_PERMISO: el rol no es ADMIN",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "ERROR_INTERNO: ms-canchas o ms-reservas "
+                    + "no respondieron",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))})
+    @GetMapping("/cancelaciones")
+    public ReporteCancelacionesResponse cancelaciones(@RequestParam String desde, @RequestParam String hasta) {
+        LocalDate inicio = parsear(desde, "desde");
+        LocalDate fin = parsear(hasta, "hasta");
+        validarOrden(inicio, fin);
+        return new ReporteCancelacionesResponse(desde, hasta,
+                reporteService.cancelacionesPorCancha(inicio, fin));
     }
 
     /**
