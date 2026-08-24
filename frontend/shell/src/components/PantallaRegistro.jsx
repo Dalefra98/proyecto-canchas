@@ -1,33 +1,39 @@
 import { useState } from "react";
 import MensajeError from "./MensajeError";
 
-// HU-01. Valida solo campos obligatorios vacios (D-05): el formato del correo y
-// la longitud de la contrasena los valida ms-usuarios, que devuelve 400
-// DATOS_INVALIDOS con su propio mensaje.
-function PantallaSesion({ aviso, onIniciarSesion, onIrARegistro }) {
+// HU-02. Solo nombre, email y password: POST /api/usuarios es publico y rol y
+// activo los fija ms-usuarios.
+function PantallaRegistro({ onRegistrar, onVolver }) {
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [faltantes, setFaltantes] = useState({ email: false, password: false });
+  const [faltantes, setFaltantes] = useState({ nombre: false, email: false, password: false });
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
+
+  // El 409 EMAIL_DUPLICADO se muestra junto al campo email; cualquier otro
+  // error va al bloque general.
+  const errorEmail = error !== null && error.codigo === "EMAIL_DUPLICADO" ? error : null;
+  const errorGeneral = errorEmail === null ? error : null;
 
   async function enviar(evento) {
     evento.preventDefault();
 
+    const nombreVacio = nombre.trim() === "";
     const emailVacio = email.trim() === "";
     const passwordVacio = password === "";
-    setFaltantes({ email: emailVacio, password: passwordVacio });
-    if (emailVacio || passwordVacio) {
+    setFaltantes({ nombre: nombreVacio, email: emailVacio, password: passwordVacio });
+    if (nombreVacio || emailVacio || passwordVacio) {
       return;
     }
 
     setError(null);
     setEnviando(true);
     try {
-      await onIniciarSesion(email.trim(), password);
+      await onRegistrar(nombre.trim(), email.trim(), password);
+      // Con exito, App cambia de vista: no se limpia nada aqui.
     } catch (fallo) {
       setError({ codigo: fallo.codigo, mensaje: fallo.mensaje });
-      // Se conserva el email escrito y se limpia la contrasena.
       setPassword("");
       setEnviando(false);
     }
@@ -36,15 +42,19 @@ function PantallaSesion({ aviso, onIniciarSesion, onIrARegistro }) {
   return (
     <main className="pantalla-acceso">
       <h1>Reserva de Canchas Deportivas</h1>
-      <h2>Iniciar sesion</h2>
-
-      {aviso ? (
-        <p className="aviso" role="status">
-          {aviso}
-        </p>
-      ) : null}
+      <h2>Crear cuenta</h2>
 
       <form onSubmit={enviar} noValidate>
+        <label htmlFor="nombre">Nombre</label>
+        <input
+          id="nombre"
+          name="nombre"
+          type="text"
+          value={nombre}
+          onChange={(evento) => setNombre(evento.target.value)}
+        />
+        {faltantes.nombre ? <span className="campo-invalido">El nombre es obligatorio</span> : null}
+
         <label htmlFor="email">Correo</label>
         <input
           id="email"
@@ -54,6 +64,7 @@ function PantallaSesion({ aviso, onIniciarSesion, onIrARegistro }) {
           onChange={(evento) => setEmail(evento.target.value)}
         />
         {faltantes.email ? <span className="campo-invalido">El correo es obligatorio</span> : null}
+        {errorEmail ? <span className="campo-invalido">{errorEmail.mensaje}</span> : null}
 
         <label htmlFor="password">Contrasena</label>
         <input
@@ -67,18 +78,18 @@ function PantallaSesion({ aviso, onIniciarSesion, onIrARegistro }) {
           <span className="campo-invalido">La contrasena es obligatoria</span>
         ) : null}
 
-        <MensajeError error={error} />
+        <MensajeError error={errorGeneral} />
 
         <button type="submit" disabled={enviando}>
-          {enviando ? "Ingresando..." : "Ingresar"}
+          {enviando ? "Registrando..." : "Registrarme"}
         </button>
       </form>
 
-      <button type="button" className="enlace" onClick={onIrARegistro}>
-        Crear cuenta
+      <button type="button" className="enlace" onClick={onVolver}>
+        Ya tengo cuenta, iniciar sesion
       </button>
     </main>
   );
 }
 
-export default PantallaSesion;
+export default PantallaRegistro;

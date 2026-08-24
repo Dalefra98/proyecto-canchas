@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ErrorApi } from "./api/clienteApi";
-import { iniciarSesion } from "./api/usuariosApi";
+import { iniciarSesion, registrarUsuario } from "./api/usuariosApi";
 import * as almacenSesion from "./sesion/almacenSesion";
 import PantallaSesion from "./components/PantallaSesion";
+import PantallaRegistro from "./components/PantallaRegistro";
 
 // D-08: el estado de la sesion vive aqui y baja por props.
 // D-09: el mapeo de LoginResponse a la prop usuario son estos tres campos.
@@ -53,8 +54,35 @@ function App() {
     setVista("bienvenida");
   }
 
+  // HU-02: el 201 no trae token, asi que no se abre sesion. Se vuelve al inicio
+  // de sesion con el aviso de registro correcto.
+  async function manejarRegistro(nombre, email, password) {
+    await registrarUsuario(nombre, email, password);
+    setAvisoSesion("Su cuenta fue creada. Ya puede iniciar sesion.");
+    setVista("sesion");
+  }
+
+  function irARegistro() {
+    setAvisoSesion(null);
+    setVista("registro");
+  }
+
+  function irASesion() {
+    setVista("sesion");
+  }
+
   if (sesion === null) {
-    return <PantallaSesion aviso={avisoSesion} onIniciarSesion={manejarInicioSesion} />;
+    if (vista === "registro") {
+      return <PantallaRegistro onRegistrar={manejarRegistro} onVolver={irASesion} />;
+    }
+
+    return (
+      <PantallaSesion
+        aviso={avisoSesion}
+        onIniciarSesion={manejarInicioSesion}
+        onIrARegistro={irARegistro}
+      />
+    );
   }
 
   // Vista provisional: la cabecera, el menu por rol y la pantalla de bienvenida

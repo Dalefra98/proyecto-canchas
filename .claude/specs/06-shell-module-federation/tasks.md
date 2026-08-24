@@ -211,7 +211,11 @@ En el navegador, como `ADMIN`:
 
 **Que hace.** Crea `src/estilos.css` —unico archivo de estilos, importado desde
 `bootstrap.jsx` (D-13)— y lo aplica al layout, al menu y a los formularios: CSS plano, sin
-librerias de UI. Cierra la spec con la revision del §1 del diseño: que las props entregadas sean
+librerias de UI. **Corrige un defecto detectado durante T4** (senalado por el responsable el
+23/08/2026): al reenviar un formulario, el error del servidor debe limpiarse **antes** de
+validar los campos, porque hoy el `401` anterior convive con los avisos de campo obligatorio.
+Afecta a `PantallaSesion` y a `PantallaRegistro`, que hacen `setError(null)` despues de la
+validacion en lugar de antes. Cierra la spec con la revision del §1 del diseño: que las props entregadas sean
 exactamente `usuario={{ usuarioId, nombre, rol }}`, `token`, `apiBaseUrl` y `onLogout`, y que
 ningun nombre de campo se haya desviado del contrato. Sin cambios de comportamiento.
 
