@@ -76,6 +76,24 @@ services:
       ms-canchas:
         condition: service_started
 
+  ms-reportes:
+    build: ./backend/ms-reportes
+    container_name: canchas-ms-reportes
+    environment:
+      # Sin SPRING_DATASOURCE_*: ms-reportes no tiene base de datos propia. Consume
+      # ms-canchas y ms-reservas por HTTP (CLAUDE.md seccion 3).
+      JWT_SECRET: ${JWT_SECRET}
+      MS_CANCHAS_URL: http://ms-canchas:8080
+      MS_RESERVAS_URL: http://ms-reservas:8080
+    ports:
+      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      - "8085:8080"
+    depends_on:
+      ms-canchas:
+        condition: service_started
+      ms-reservas:
+        condition: service_started
+
   adminer:
     image: adminer:4
     container_name: canchas-adminer
