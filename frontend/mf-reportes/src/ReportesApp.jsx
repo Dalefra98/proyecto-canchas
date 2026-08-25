@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { ErrorApi } from "./api/clienteApi";
 import NavegacionInterna from "./components/NavegacionInterna";
 import PantallaOcupacion from "./components/PantallaOcupacion";
+import PantallaReservas from "./components/PantallaReservas";
 import SelectorRango from "./components/SelectorRango";
 import "./estilos.css";
 
@@ -128,11 +129,21 @@ function ReportesApp({ usuario, token, apiBaseUrl, onLogout }) {
           ejecutar={ejecutar}
           onCargando={setCargando}
         />
-      ) : (
-        // Las pantallas de Reservas y Cancelaciones llegan en T5 y T6. Hasta
-        // entonces esas dos vistas no llaman a ninguna ruta.
+      ) : null}
+      {vista === "reservas" ? (
+        <PantallaReservas
+          consulta={consulta}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+          onCargando={setCargando}
+        />
+      ) : null}
+      {vista === "cancelaciones" ? (
+        // La pantalla de Cancelaciones llega en T6. Hasta entonces esta vista no
+        // llama a ninguna ruta.
         <p className="mfrep-vacio">Elija un rango de fechas y pulse Consultar.</p>
-      )}
+      ) : null}
     </section>
   );
 }
