@@ -151,16 +151,15 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      # El devServer proxya /api hacia los cuatro microservicios por nombre de
-      # contenedor. service_started y no service_healthy: ninguno declara
-      # healthcheck y el devServer arranca igual aunque un destino no responda.
-      ms-usuarios:
-        condition: service_started
-      ms-canchas:
-        condition: service_started
-      ms-reservas:
-        condition: service_started
-      ms-reportes:
+      # Este frontend ya no habla con ningun microservicio: su devServer proxya /api al
+      # gateway y solo a el (spec 10), asi que declarar los ms- aqui seria declarar una
+      # dependencia falsa. El orden hacia los microservicios se mantiene por
+      # transitividad, porque el gateway si depende de los cuatro.
+      # Que consume realmente este microfrontend se lee en los context de su
+      # devServer.proxy, en webpack.config.js, no aqui (D-8).
+      # service_started y no service_healthy: el gateway no declara healthcheck y el
+      # devServer arranca igual aunque el destino no responda.
+      gateway:
         condition: service_started
 
   mf-reservas:
@@ -178,12 +177,13 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      # Solo los dos microservicios que este remote consume (P-07):
-      # GET /api/canchas y las cuatro rutas de /api/reservas. service_started
-      # porque ninguno declara healthcheck y el devServer arranca igual.
-      ms-canchas:
-        condition: service_started
-      ms-reservas:
+      # Este remote ya no habla con ningun microservicio: su devServer proxya /api al
+      # gateway y solo a el (spec 10). Que consume realmente -GET /api/canchas y las
+      # cuatro rutas de /api/reservas, P-07- se lee en los context de su
+      # devServer.proxy, en webpack.config.js, no aqui (D-8).
+      # service_started porque el gateway no declara healthcheck y el devServer
+      # arranca igual.
+      gateway:
         condition: service_started
 
   mf-administracion:
@@ -201,14 +201,13 @@ services:
     ports:
       - "3002:3002"
     depends_on:
-      # Los tres microservicios que este remote consume (P-08): /api/usuarios,
-      # /api/canchas y /api/reservas. No ms-reportes. service_started porque
-      # ninguno declara healthcheck y el devServer arranca igual.
-      ms-usuarios:
-        condition: service_started
-      ms-canchas:
-        condition: service_started
-      ms-reservas:
+      # Este remote ya no habla con ningun microservicio: su devServer proxya /api al
+      # gateway y solo a el (spec 10). Que consume realmente -/api/usuarios,
+      # /api/canchas y /api/reservas, P-08, y no /api/reportes- se lee en los tres
+      # context de su devServer.proxy, en webpack.config.js, no aqui (D-8, DD-14).
+      # service_started porque el gateway no declara healthcheck y el devServer
+      # arranca igual.
+      gateway:
         condition: service_started
 
   mf-reportes:
@@ -227,11 +226,13 @@ services:
     ports:
       - "3003:3003"
     depends_on:
-      # Solo ms-reportes (P-08): es el unico microservicio que este remote
-      # consume, con sus tres rutas de /api/reportes. Que ms-reportes dependa
-      # por HTTP de ms-canchas y ms-reservas es asunto suyo. service_started
-      # porque no declara healthcheck y el devServer arranca igual.
-      ms-reportes:
+      # Este remote ya no habla con ningun microservicio: su devServer proxya /api al
+      # gateway y solo a el (spec 10). Que consume unicamente /api/reportes -P-08, y
+      # D-15 de la spec 09- se lee en la unica entrada de su devServer.proxy, en
+      # webpack.config.js, no aqui (D-8).
+      # service_started porque el gateway no declara healthcheck y el devServer
+      # arranca igual.
+      gateway:
         condition: service_started
 
 volumes:
