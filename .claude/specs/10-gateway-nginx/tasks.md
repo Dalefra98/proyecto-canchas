@@ -68,10 +68,11 @@ los microservicios no están levantados, o un nombre de destino está mal escrit
 
 **Qué hace.** Declara el servicio con las cinco claves de `design.md` §8.1: `image: nginx:alpine`,
 `container_name: canchas-gateway`, el volumen
-`./infra/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro` (DD-01), `ports: 8080:80` con el
+`./infra/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro` (DD-01), `ports: 8090:80` con el
 comentario obligatorio de que es **puerto de verificación y demostración, no vía de la
-aplicación** (D-7), y `depends_on` de los cuatro microservicios con `condition: service_started`,
-también comentado con el motivo del DNS al arrancar (§8.2).
+aplicación** (D-7) y de que es `8090` y no `8080` porque este último es el puerto más disputado
+de una máquina de desarrollo (DD-13), y `depends_on` de los cuatro microservicios con
+`condition: service_started`, también comentado con el motivo del DNS al arrancar (§8.2).
 
 **Requisitos que cubre.** HU-05 completa; HU-06; HU-04 en su comprobación real.
 
@@ -86,9 +87,9 @@ docker compose config
 docker compose up -d gateway
 docker compose logs --tail=50 gateway
 docker compose exec gateway nginx -t
-curl.exe -i http://localhost:8080/
-curl.exe -i http://localhost:8080/api/canchas
-curl.exe -i -X POST http://localhost:8080/api/usuarios/sesiones -H "Content-Type: application/json" -d "{\"email\":\"admin@canchas.ec\",\"password\":\"Admin123\"}"
+curl.exe -i http://localhost:8090/
+curl.exe -i http://localhost:8090/api/canchas
+curl.exe -i -X POST http://localhost:8090/api/usuarios/sesiones -H "Content-Type: application/json" -d "{\"email\":\"admin@canchas.ec\",\"password\":\"Admin123\"}"
 ```
 
 Esperado, en orden: el `config` no falla; el registro no muestra `host not found in upstream`;
@@ -99,7 +100,7 @@ con `token`. Ese `token` se reutiliza en T3 y T7, así que conviene guardarlo.
 Comprobación de que el prefijo llega íntegro (R-1) comparando gateway y puerto directo:
 
 ```powershell
-curl.exe -s http://localhost:8080/api/canchas -H "Authorization: Bearer <token>"
+curl.exe -s http://localhost:8090/api/canchas -H "Authorization: Bearer <token>"
 curl.exe -s http://localhost:8083/api/canchas -H "Authorization: Bearer <token>"
 ```
 
@@ -259,8 +260,8 @@ tumba el gateway (V-8, D-6):
 
 ```powershell
 docker compose stop ms-reportes
-curl.exe -i http://localhost:8080/api/reportes/ocupacion?desde=2026-08-01&hasta=2026-08-31 -H "Authorization: Bearer <token>"
-curl.exe -i http://localhost:8080/api/canchas -H "Authorization: Bearer <token>"
+curl.exe -i http://localhost:8090/api/reportes/ocupacion?desde=2026-08-01&hasta=2026-08-31 -H "Authorization: Bearer <token>"
+curl.exe -i http://localhost:8090/api/canchas -H "Authorization: Bearer <token>"
 docker compose start ms-reportes
 ```
 

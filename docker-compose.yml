@@ -94,6 +94,39 @@ services:
       ms-reservas:
         condition: service_started
 
+  gateway:
+    # Gateway Nginx (spec 10): punto de entrada unico del trafico /api de la aplicacion.
+    # El reparto por microservicio vive en infra/nginx/gateway.conf y en ningun otro lado.
+    # Sin build ni Dockerfile: la imagen oficial mas la configuracion montada bastan.
+    image: nginx:alpine
+    container_name: canchas-gateway
+    volumes:
+      # Se monta en la ruta de default.conf, NO como un archivo mas de conf.d (DD-01):
+      # la imagen trae su propio default.conf con un server que ya escucha en el puerto
+      # 80 y, con los dos presentes, ganaria el primero por orden alfabetico y los cuatro
+      # location /api no se usarian nunca, sin ningun error visible.
+      - ./infra/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      # Puerto de verificacion y demostracion (D-7), NO la via de la aplicacion: los
+      # cuatro microfrontends llaman al gateway por la red interna de Docker,
+      # http://gateway:80. 8090 y no 8080 (DD-13): 8080 es el puerto mas disputado de una
+      # maquina de desarrollo y el proyecto no debe depender de que este libre.
+      - "8090:80"
+    depends_on:
+      # Nginx resuelve por DNS el nombre de cada proxy_pass AL ARRANCAR, no en cada
+      # peticion: si un contenedor destino no existe todavia, aborta con
+      # "host not found in upstream". service_started basta -el contenedor existe y el
+      # DNS de Docker resuelve- y service_healthy es imposible: ninguno de los cuatro
+      # microservicios declara healthcheck.
+      ms-usuarios:
+        condition: service_started
+      ms-canchas:
+        condition: service_started
+      ms-reservas:
+        condition: service_started
+      ms-reportes:
+        condition: service_started
+
   adminer:
     image: adminer:4
     container_name: canchas-adminer

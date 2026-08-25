@@ -74,7 +74,7 @@ devServer de cada microfrontend  (4 archivos, 4 destinos cada uno)
 **Después** — cada microfrontend conoce un solo destino:
 
 ```
-navegador :3000/:3001/:3002/:3003          curl.exe :8080  (verificacion, D-7)
+navegador :3000/:3001/:3002/:3003          curl.exe :8090  (verificacion, D-7)
       |                                          |
       v                                          |
 devServer de cada microfrontend                  |
@@ -301,7 +301,7 @@ Esto es lo que permite que esta spec no toque ni una línea de `src/` (HU-07 del
 | `image` | `nginx:alpine` | `CLAUDE.md` §1: solo Docker, sin build propio |
 | `container_name` | `canchas-gateway` | patrón de los nueve servicios existentes (`canchas-*`) |
 | `volumes` | `./infra/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro` | **DD-01**: el archivo del repositorio se llama `gateway.conf` (D-9) y se monta **en la ruta de `default.conf`** para reemplazar el `server` de bienvenida que trae la imagen. `:ro` porque el gateway nunca escribe su configuración |
-| `ports` | `8080:80` | D-7: puerto de **verificación y demostración**, no vía de la aplicación. Comentario obligatorio diciéndolo |
+| `ports` | `8090:80` | D-7: puerto de **verificación y demostración**, no vía de la aplicación. Comentario obligatorio diciéndolo. `8090` y no `8080`: DD-13 |
 | `depends_on` | los cuatro `ms-*` con `condition: service_started` | §8.2 |
 
 **Sin `environment`, sin `healthcheck`, sin volumen de datos.** El gateway no tiene estado.
@@ -378,9 +378,9 @@ demostrar y con qué herramienta.
 | V-1 | `gateway.conf` es sintácticamente válido | `docker compose exec gateway nginx -t` |
 | V-2 | El compose es válido y el servicio está declarado como se diseñó | `docker compose config` |
 | V-3 | El gateway arrancó sin `host not found in upstream` | `docker compose logs --tail=50 gateway` |
-| V-4 | Los cuatro prefijos enrutan | `curl.exe` a `localhost:8080` contra una ruta de cada dominio, con y sin token |
+| V-4 | Los cuatro prefijos enrutan | `curl.exe` a `localhost:8090` contra una ruta de cada dominio, con y sin token |
 | V-5 | La respuesta por el gateway es idéntica a la del puerto directo | mismo `curl.exe` contra `8080` y contra `8083`, comparando código y cuerpo |
-| V-6 | Ruta fuera de `/api` responde `404` | `curl.exe -i http://localhost:8080/` |
+| V-6 | Ruta fuera de `/api` responde `404` | `curl.exe -i http://localhost:8090/` |
 | V-7 | Swagger UI sigue accesible por los puertos directos | navegador en `8082`–`8085` |
 | V-8 | Un microservicio caído produce `502` y no tumba el gateway | `docker compose stop ms-reportes`, `curl.exe`, `docker compose start ms-reportes` |
 | V-9 | Los cuatro microfrontends siguen funcionando de extremo a extremo | navegador en `localhost:3000`: login, un módulo de cada remote |
@@ -410,6 +410,7 @@ antiguo se lee como nuevo. La bitácora ya registró ese engaño dos veces.
 | DD-10 | Un solo `server`, sin `server_name` y sin `upstream` | Un bloque `upstream` por microservicio | `upstream` existe para agrupar varias réplicas y elegir política de balanceo. Aquí hay **una** instancia por microservicio: cuatro bloques `upstream` de una línea cada uno serían ceremonia sin efecto |
 | DD-11 | Los cuatro frontends pasan a `depends_on: gateway` | Conservar además los `depends_on` hacia los `ms-*` | Un frontend ya no habla con ningún microservicio: declararlo sería declarar una dependencia falsa. El orden se mantiene por transitividad, y el acoplamiento real de cada remote sigue documentado en su `context` (D-8, §8.2) |
 | DD-12 | `shell.conf` se borra y `gateway.conf` se crea, en vez de renombrar | `git mv` conservando el historial | El archivo cambia de contenido casi por completo —pierde el `location /`, gana los cuatro `proxy_set_header`— y de propósito. El historial del archivo original queda igual en el repositorio; lo que importa es que no sobreviva un `shell.conf` que ya no describe nada (D-9, HU-09) |
+| DD-13 | El puerto publicado del gateway es `8090` | `8080:80`, el valor con el que se aprobó D-7 | `8080` es el puerto más disputado de una máquina de desarrollo: servidores de aplicaciones, herramientas y contenedores de otros proyectos lo toman por omisión. El proyecto no debe depender de que esté libre en la máquina de quien lo despliegue, y al responsable ya le ocurrió con un contenedor suyo de otro trabajo durante esta misma spec. `8090` no compite con nada del proyecto ni con ningún valor por omisión habitual. El cambio no toca `gateway.conf`: el puerto **interno** sigue siendo el `80` y el mapeo vive solo en `docker-compose.yml` |
 
 ## 13. Fuera de alcance de este diseño
 

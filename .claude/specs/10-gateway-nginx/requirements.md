@@ -51,7 +51,7 @@ como origen único también del navegador— fue evaluada y descartada (§10, D-
 | E-01 | `infra/nginx/gateway.conf`: solo los cuatro `location /api/...`, con sus `proxy_set_header`; sin `location /` | D-5, D-9 |
 | E-02 | `infra/nginx/shell.conf` **borrado** (su mitad `/api` se traslada a `gateway.conf`) | D-5, D-9 |
 | E-03 | `infra/nginx/remote.conf` **borrado** | D-5 |
-| E-04 | Servicio `gateway` en `docker-compose.yml`: imagen `nginx:alpine`, `gateway.conf` montado de solo lectura, `ports: 8080:80`, `depends_on` de los cuatro microservicios | PDF §4.2, §4.4, D-7 |
+| E-04 | Servicio `gateway` en `docker-compose.yml`: imagen `nginx:alpine`, `gateway.conf` montado de solo lectura, `ports: 8090:80`, `depends_on` de los cuatro microservicios | PDF §4.2, §4.4, D-7 |
 | E-05 | `devServer.proxy` de los cuatro `frontend/*/webpack.config.js`: **solo** cambia el `target` a `http://gateway:80`; cada uno conserva los prefijos que hoy declara | D-1, D-8 |
 | E-06 | `depends_on` de los cuatro servicios de frontend en `docker-compose.yml`: pasan a depender de `gateway` | E-04 |
 | E-07 | Comentarios de los mapeos `8082`–`8085` en `docker-compose.yml` **corregidos**: dejan de decir "se elimina cuando exista el gateway" | D-2 |
@@ -75,7 +75,7 @@ frontend/mf-reportes/webpack.config.js       (solo el target del devServer.proxy
 |---|---|---|
 | Imagen del gateway | `nginx:alpine` | `CLAUDE.md` §1 (solo Docker) |
 | Puerto interno | `80` | patrón de Nginx |
-| Puerto publicado | `8080:80`, **solo para verificación y demostración** | D-7 |
+| Puerto publicado | `8090:80`, **solo para verificación y demostración** | D-7 |
 | Nombre de servicio y de host en la red | `gateway` | esta spec |
 | Archivo de configuración | `infra/nginx/gateway.conf` | D-9 |
 | Destino de cada prefijo | nombre de contenedor `ms-*:8080` | P-02 de la spec 06 |
@@ -193,17 +193,17 @@ el entorno local reproducible que pide el PDF §4.4.
 demostrar que el punto de entrada único existe y verificar las tareas de esta spec.
 
 - CUANDO se ejecuta
-  `curl.exe http://localhost:8080/api/canchas -H "Authorization: Bearer <token>"`, ENTONCES
+  `curl.exe http://localhost:8090/api/canchas -H "Authorization: Bearer <token>"`, ENTONCES
   responde exactamente lo mismo que `curl.exe http://localhost:8083/api/canchas` con el mismo
   token: mismo código y mismo cuerpo.
-- CUANDO se ejecuta `curl.exe http://localhost:8080/api/canchas` **sin** token, ENTONCES
+- CUANDO se ejecuta `curl.exe http://localhost:8090/api/canchas` **sin** token, ENTONCES
   responde `401` con `{ "codigo": "NO_AUTENTICADO", ... }` producido por `ms-canchas`, no por el
   gateway.
-- CUANDO se ejecuta `curl.exe -i http://localhost:8080/`, ENTONCES responde `404` (HU-04).
-- SI alguien lee el puerto `8080` como la vía por la que el frontend llama a la API, ENTONCES
+- CUANDO se ejecuta `curl.exe -i http://localhost:8090/`, ENTONCES responde `404` (HU-04).
+- SI alguien lee el puerto `8090` como la vía por la que el frontend llama a la API, ENTONCES
   está leyendo mal, y el comentario del servicio en `docker-compose.yml` debe impedirlo: es
   **puerto de verificación y demostración**. Los cuatro microfrontends llaman al gateway por la
-  red interna de Docker (`http://gateway:80`), nunca por `localhost:8080`.
+  red interna de Docker (`http://gateway:80`), nunca por `localhost:8090`.
 
 ### HU-07 — Un microservicio caído (D-6)
 
@@ -240,7 +240,7 @@ gateway.
 - CUANDO se abre `http://localhost:8081` (adminer), ENTONCES sigue funcionando: es herramienta
   de desarrollo, fuera del alcance del gateway (D-4).
 - SI el gateway declara alguna ruta hacia `/swagger-ui` o `/v3/api-docs`, ENTONCES la tarea está
-  mal hecha: Swagger **no** se enruta por el gateway (D-3), y `GET http://localhost:8080/swagger-ui/index.html`
+  mal hecha: Swagger **no** se enruta por el gateway (D-3), y `GET http://localhost:8090/swagger-ui/index.html`
   debe responder `404`.
 
 ### HU-09 — Limpieza de `infra/nginx`
@@ -352,7 +352,7 @@ y que **la aplicación no los usa**—, para que nadie lea un puerto publicado c
 camino por el que el frontend llama a la API. El "punto de entrada único" de HU-01 se refiere al
 tráfico de la aplicación; una puerta de servicio abierta para la documentación y las pruebas no
 lo contradice, siempre que esté escrito que lo es. Exactamente el mismo razonamiento vale para
-el `8080` del propio gateway (D-7): es puerto de verificación y demostración, no la vía de la
+el `8090` del propio gateway (D-7): es puerto de verificación y demostración, no la vía de la
 aplicación.
 
 Los `requirements.md` de las specs 02 a 09 **no se corrigen**: son documentos históricos, ya
@@ -431,13 +431,21 @@ caso que no es de negocio. La distinción es deliberada y defendible: `500 ERROR
 dos cosas distintas y deben verse distintas. Consecuencia declarada en HU-07: ninguna capa
 `src/api/` cambia, porque ya trata como fallo genérico todo lo que no está en el contrato.
 
-**D-7 — El gateway publica `8080:80` (salida (b) de P-02).** El responsable cambió su criterio
+**D-7 — El gateway publica `8090:80` (salida (b) de P-02).** El responsable cambió su criterio
 inicial —el gateway funcionalmente no necesita puerto publicado— al constatar que sin él **no se
 puede demostrar el gateway con `curl.exe` en la defensa ni verificar las tareas de esta spec**.
-Queda escrito, en la spec y en el comentario del compose, que `8080` es **puerto de verificación
+Queda escrito, en la spec y en el comentario del compose, que `8090` es **puerto de verificación
 y demostración, no la vía de la aplicación**: los cuatro microfrontends siguen llamando al
-gateway por la red interna de Docker (`http://gateway:80`). El puerto `8080` del host está libre
-(`8081` adminer, `8082`–`8085` microservicios, `3000`–`3003` frontends, `5432` postgres).
+gateway por la red interna de Docker (`http://gateway:80`).
+
+**Corrección del 25/08/2026: el puerto publicado es `8090`, no `8080`.** El valor inicial de esta
+decisión era `8080:80`. Se cambia a `8090:80` por un motivo que no es de diseño sino de
+despliegue: **`8080` es el puerto más disputado en una máquina de desarrollo** —servidores de
+aplicaciones, herramientas y contenedores de otros proyectos lo toman por omisión—, y este
+proyecto no debe depender de que esté libre en la máquina de quien lo despliegue. Al responsable
+ya le ocurrió con un contenedor suyo de otro trabajo durante esta misma spec. `8090` no compite
+con nada del proyecto ni con ningún valor por omisión habitual. La lista completa de puertos que
+el sistema necesita libres está en §11.
 
 **D-8 — Cada microfrontend conserva sus prefijos; solo cambia el `target` (salida (b) de P-03).**
 El shell mantiene los cuatro `context`, `mf-reservas` los cuatro que ya declara,
@@ -452,7 +460,35 @@ instrucción del 24/08/2026 decía "se reescribe" refiriéndose al contenido.
 sus estáticos y no lo conoce— es una trampa para quien lo lea después. El nombre queda alineado
 con el servicio `gateway` del compose y con lo que el archivo hace.
 
-## 11. Supuestos
+## 11. Puertos que el sistema necesita libres
+
+Esta tabla es la lista que el manual de despliegue debe declarar como requisito previo: si
+cualquiera de estos puertos está ocupado en la máquina de destino, `docker compose up -d` falla
+al publicar el mapeo.
+
+| Puerto del host | Servicio | Para qué se usa | ¿Lo usa la aplicación? |
+|---|---|---|---|
+| `3000` | `shell` | host de Module Federation; **es la URL por la que se entra al sistema** | **sí** |
+| `3001` | `mf-reservas` | `remoteEntry.js` del remote, pedido por el navegador | **sí** |
+| `3002` | `mf-administracion` | `remoteEntry.js` del remote | **sí** |
+| `3003` | `mf-reportes` | `remoteEntry.js` del remote | **sí** |
+| `8090` | `gateway` | verificación con `curl.exe` y demostración del punto de entrada único (D-7) | no: los frontends lo llaman por la red interna |
+| `8081` | `adminer` | herramienta de desarrollo (D-4) | no |
+| `8082` | `ms-usuarios` | Swagger UI y verificación por `curl.exe` (D-2) | no |
+| `8083` | `ms-canchas` | Swagger UI y verificación por `curl.exe` (D-2) | no |
+| `8084` | `ms-reservas` | Swagger UI y verificación por `curl.exe` (D-2) | no |
+| `8085` | `ms-reportes` | Swagger UI y verificación por `curl.exe` (D-2) | no |
+| `5432` | `postgres` | acceso directo a la base con `psql` o un cliente (D-4) | no |
+
+Los cinco de la columna "no" son puertos de servicio: si uno estuviera ocupado, la aplicación
+seguiría funcionando en cuanto se cambiara su mapeo, porque nada del frontend depende de ellos.
+Los cuatro de `3000`–`3003` **sí** son de la aplicación: cambiarlos obliga a tocar la URL del
+remote en el `ModuleFederationPlugin` del shell y el `client.webSocketURL` del microfrontend
+afectado, así que no se cambian a la ligera.
+
+**Ninguno de los once es `8080`**, y es deliberado (D-7).
+
+## 12. Supuestos
 
 **Sin supuestos.** Ningún dato faltante se rellenó con un valor inventado. Los cuatro que faltaban
 se plantearon como P-01 a P-04 y están respondidos por el responsable en §10 (D-6 a D-9). **No
