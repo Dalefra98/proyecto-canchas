@@ -33,7 +33,10 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
+      # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
+      # specs 03 a 05 y de la bitacora esta escrita contra estos puertos. La aplicacion
+      # NO los usa: los cuatro microfrontends llaman a la API por gateway:80.
       - "8082:8080"
     depends_on:
       postgres:
@@ -49,7 +52,10 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
+      # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
+      # specs 03 a 05 y de la bitacora esta escrita contra estos puertos. La aplicacion
+      # NO los usa: los cuatro microfrontends llaman a la API por gateway:80.
       - "8083:8080"
     depends_on:
       postgres:
@@ -68,7 +74,10 @@ services:
       MS_CANCHAS_URL: http://ms-canchas:8080
       RESERVAS_MAX_ACTIVAS: ${RESERVAS_MAX_ACTIVAS}
     ports:
-      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
+      # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
+      # specs 03 a 05 y de la bitacora esta escrita contra estos puertos. La aplicacion
+      # NO los usa: los cuatro microfrontends llaman a la API por gateway:80.
       - "8084:8080"
     depends_on:
       postgres:
@@ -86,7 +95,10 @@ services:
       MS_CANCHAS_URL: http://ms-canchas:8080
       MS_RESERVAS_URL: http://ms-reservas:8080
     ports:
-      # Mapeo TEMPORAL para probar con curl.exe; se elimina cuando exista el gateway Nginx.
+      # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
+      # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
+      # specs 03 a 05 y de la bitacora esta escrita contra estos puertos. La aplicacion
+      # NO los usa: los cuatro microfrontends llaman a la API por gateway:80.
       - "8085:8080"
     depends_on:
       ms-canchas:
