@@ -4,6 +4,7 @@ import NavegacionInterna from "./components/NavegacionInterna";
 import PantallaCanchas from "./components/PantallaCanchas";
 import PantallaReservas from "./components/PantallaReservas";
 import PantallaUsuarios from "./components/PantallaUsuarios";
+import "./estilos.css";
 
 // Modulo expuesto como "./AdminApp" (contrato congelado). Recibe las cuatro
 // props del shell y ninguna mas. Es un componente, no un createRoot: el shell lo

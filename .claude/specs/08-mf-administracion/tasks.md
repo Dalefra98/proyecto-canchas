@@ -306,11 +306,15 @@ quede ninguna ruta consumida fuera de las once de §6.1.
 docker compose logs --timestamps --tail=30 mf-administracion
 curl.exe -i http://localhost:3002/remoteEntry.js
 curl.exe -i http://localhost:3001/remoteEntry.js
-docker compose exec mf-administracion sh -c "grep -rn 'fetch(' src --include=*.jsx ; grep -rn 'Storage' src ; echo FIN"
+docker compose exec mf-administracion sh -c "echo '--- fetch en .jsx:'; grep -rn 'fetch(' src | grep '.jsx' ; echo '--- fetch en todo src:'; grep -rn 'fetch(' src ; echo '--- Storage:'; grep -rn 'Storage' src ; echo FIN"
 ```
 
 El `grep` de `fetch(` sobre los `.jsx` no debe devolver ninguna línea —el único `fetch` vive en
-`src/api/clienteApi.js`— y el de `Storage` tampoco.
+`src/api/clienteApi.js`, que sí aparece en el segundo `grep`— y el de `Storage` tampoco.
+
+El filtrado por extensión se hace con una tubería a un segundo `grep` y **no** con `--include`:
+el `grep` de `node:20-alpine` es el de BusyBox y esa opción no existe ahí
+(`grep: unrecognized option: include=*.jsx`). Anotado en `docs/bitacora.md`.
 
 Recorrido integral en el navegador, en una sola sesión de ADMIN: entrar a Administración,
 recorrer las tres pantallas, crear y eliminar un bloqueo, cancelar una reserva, cambiar el estado

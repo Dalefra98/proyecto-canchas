@@ -1,0 +1,257 @@
+/* Unico archivo de estilos del remote, importado desde AdminApp.jsx y no desde
+   bootstrap.jsx: el shell monta el modulo expuesto directamente y nunca ejecuta
+   el bootstrap del remote, asi que importarlo alli dejaria el remote sin estilos
+   en su unico caso real de uso.
+
+   Todas las clases llevan el prefijo mfa- (D-16): el CSS del shell, el de
+   mf-reservas (mfr-) y el de este remote conviven en la misma pagina y son
+   globales, asi que una clase con el mismo nombre en dos proyectos se pisaria
+   segun el orden de carga.
+
+   CSS plano, sin librerias de UI (CLAUDE.md seccion 3). */
+
+/* ---- Contenedor del modulo y pantallas ---- */
+
+.mfa-modulo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mfa-pantalla {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Aviso de la guardia de rol (P-07): el modulo no se monta y esto es lo unico
+   que se pinta. */
+.mfa-aviso {
+  margin: 0;
+  color: #7a5200;
+  background-color: #fff8e6;
+  border: 1px solid #b07d00;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+/* ---- Navegacion interna (tres pantallas, HU-14) ---- */
+
+.mfa-navegacion {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid #d0d0d0;
+  padding-bottom: 0.5rem;
+}
+
+/* El estado inactivo declara su propio fondo y su propio color: sin fondo
+   explicito el boton queda transparente y hereda el color del CSS del shell,
+   que convive en la misma pagina (D-16). */
+.mfa-navegacion-opcion {
+  background-color: #ffffff;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+  color: #1f4e79;
+  --mfa-fondo-hover: #eef3f8;
+  --mfa-texto-hover: #1f4e79;
+  --mfa-borde-hover: #1f4e79;
+}
+
+.mfa-navegacion-opcion.mfa-activa {
+  background-color: #1f4e79;
+  border-color: #1f4e79;
+  color: #ffffff;
+  --mfa-fondo-hover: #1a4267;
+  --mfa-texto-hover: #ffffff;
+  --mfa-borde-hover: #1a4267;
+}
+
+/* ---- Botones ---- */
+
+/* Aqui los botones no llevan clase propia: son los de las filas de las tablas y
+   los de los formularios. Se estilan por elemento dentro del modulo, con la
+   misma paleta del remote hermano. */
+.mfa-modulo button {
+  background-color: #ffffff;
+  border: 1px solid #1f4e79;
+  border-radius: 4px;
+  color: #1f4e79;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  --mfa-fondo-hover: #eef3f8;
+  --mfa-texto-hover: #1f4e79;
+  --mfa-borde-hover: #1f4e79;
+}
+
+/* El boton que confirma un formulario o un dialogo es el destacado. */
+.mfa-modulo button[type="submit"] {
+  background-color: #1f4e79;
+  border-color: #1f4e79;
+  color: #ffffff;
+  --mfa-fondo-hover: #1a4267;
+  --mfa-texto-hover: #ffffff;
+  --mfa-borde-hover: #1a4267;
+}
+
+.mfa-modulo button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mfa-acciones {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ---- Tablas de canchas, bloqueos, reservas y usuarios ---- */
+
+.mfa-tabla {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.mfa-tabla th,
+.mfa-tabla td {
+  border: 1px solid #d0d0d0;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.mfa-tabla th {
+  background-color: #eef3f8;
+  color: #1f4e79;
+}
+
+/* Las acciones de cada fila van en linea y sin envolverse a media palabra. */
+.mfa-tabla td button + button {
+  margin-left: 0.4rem;
+}
+
+/* ---- Formularios de cancha y de bloqueo ---- */
+
+.mfa-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 0.9rem 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mfa-formulario h4,
+.mfa-formulario h5 {
+  margin: 0;
+  color: #1f4e79;
+}
+
+/* margin: 0 anula el "label { margin-bottom: 4px }" del shell, que dejaba los
+   campos desalineados entre si. */
+.mfa-formulario label,
+.mfa-pantalla > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  margin: 0;
+  max-width: 22rem;
+}
+
+/* height fija el alto en vez de dejarlo al contenido: el input de tipo date
+   suma el widget nativo del calendario y crece mas que un select con el mismo
+   padding. box-sizing hace que padding y borde entren dentro de esa altura, y
+   margin: 0 anula el "input { margin-bottom: 14px }" del shell. */
+.mfa-formulario input,
+.mfa-formulario select,
+.mfa-pantalla > label select {
+  border: 1px solid #b8b8b8;
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.95rem;
+  height: 2.25rem;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* ---- Panel de bloqueos, anidado en la pantalla de Canchas (P-01) ---- */
+
+.mfa-panel-bloqueos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid #1f4e79;
+  border-radius: 4px;
+  padding: 0.9rem 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mfa-panel-bloqueos h4 {
+  margin: 0;
+  color: #1f4e79;
+}
+
+/* ---- Dialogo de confirmacion (D-12) ---- */
+
+.mfa-confirmacion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: #fff8e6;
+  border: 1px solid #b07d00;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mfa-confirmacion p {
+  margin: 0;
+}
+
+/* ---- Avisos ---- */
+
+.mfa-mensaje-error {
+  margin: 0;
+  color: #a12020;
+  background-color: #fdeaea;
+  border: 1px solid #a12020;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.mfa-aviso-exito {
+  margin: 0;
+  color: #1d6b32;
+  background-color: #eaf7ee;
+  border: 1px solid #1d6b32;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+/* ---- Hover: una sola regla para todos los botones del remote ---- */
+
+/* Resolverlo boton por boton deja fuera a los que no tienen clase propia, y esos
+   se quedan con el "button:hover:enabled" del shell, que cambia el fondo a su
+   verde oscuro y no toca el color del texto: un boton de texto oscuro queda
+   ilegible sobre fondo oscuro. Es el problema que ya documento mf-reservas.
+
+   El criterio vive en un solo sitio: el hover cambia minimamente fondo y borde,
+   y el texto conserva el color que cada regla declara junto al suyo de reposo.
+   :enabled deja fuera los botones deshabilitados mientras una peticion viaja. */
+.mfa-modulo button:hover:enabled {
+  background-color: var(--mfa-fondo-hover);
+  color: var(--mfa-texto-hover);
+  border-color: var(--mfa-borde-hover);
+}

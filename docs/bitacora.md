@@ -370,3 +370,19 @@ envoltorio y llama `onLogout()` (D-13).
   mintiendo sobre *cuándo* compiló, el segundo sobre *qué significa* haber compilado, y este
   tercero sobre *qué* se compiló. De ahí la regla de leer siempre el registro con
   `--timestamps`, anotada al inicio del `tasks.md` de la spec 07.
+- **Los comandos escritos para un shell de Linux completo no siempre corren en Alpine.** En la T8
+  de la spec 08, la verificación escrita en `tasks.md` era
+  `grep -rn 'fetch(' src --include=*.jsx` dentro del contenedor, y respondió
+  `grep: unrecognized option: include=*.jsx` seguido del modo de empleo de BusyBox. La causa es
+  la imagen: `node:20-alpine` trae **BusyBox**, cuyo `grep` implementa un subconjunto de
+  opciones; `--include`, `--exclude` y `-P` son de GNU grep y no existen ahí. Lo mismo vale para
+  otras utilidades de la imagen (`sed`, `find`, `ps`): el comando que funciona en la terminal del
+  host, o en una imagen `debian`/`ubuntu`, puede no existir dentro del contenedor. La sustitución
+  usada, y ya corregida en el `tasks.md` de la spec 08, es una tubería a un segundo `grep`:
+  `grep -rn 'fetch(' src | grep '.jsx'`. Consecuencia para las specs que quedan: un comando de
+  verificación que corre **dentro** de un contenedor Alpine se prueba antes de escribirlo en
+  `tasks.md`, o se limita a opciones POSIX. Detalle que ahorra tiempo: el fallo es ruidoso pero
+  inofensivo —BusyBox imprime su ayuda y sigue—, así que en un `sh -c` con varios comandos
+  encadenados por `;` **los siguientes se ejecutan igual**, y es fácil leer el resultado como si
+  todo hubiera corrido. En la T8 el `grep -rn 'Storage' src` posterior sí corrió y devolvió vacío;
+  el que no llegó a ejecutarse fue solo el primero.
