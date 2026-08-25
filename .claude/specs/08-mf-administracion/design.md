@@ -310,7 +310,7 @@ pintar, sobre una lista derivada del estado (D-09).
 | `usuarios` | arreglo de `UsuarioResponse` | `[]` | orden el de la respuesta | HU-09 |
 | `cargando` | boolean | `true` | aviso de carga | HU-09 |
 | `error` | `{ codigo, mensaje }` o `null` | `null` | error del listado | HU-09 |
-| `confirmacion` | `UsuarioResponse` o `null` | `null` | solo se usa cuando la fila es la del propio administrador (P-06) | HU-09 |
+| `confirmacion` | `UsuarioResponse` o `null` | `null` | solo se usa cuando la fila es la del propio administrador **y su `activo` es `true`** (P-06, D-19) | HU-09 |
 | `usuarioIdEnCambio` | number o `null` | `null` | fila cuyo `PATCH` está en curso | HU-09 |
 | `errorAccion` | `{ codigo, mensaje }` o `null` | `null` | error del cambio de estado | HU-09 |
 | `aviso` | string o `null` | `null` | aviso de cambio hecho | HU-09 |
@@ -611,9 +611,15 @@ reservas; los nombres aparecen cuando llegan las otras dos. Si una de apoyo fall
 mensaje y recarga.
 
 **F-08 — Cambio de estado de usuario.** Botón "Activar" o "Inactivar" → si el `usuarioId` de la
-fila **no** es el de la prop `usuario`, la llamada sale directa; si **sí** lo es,
-`confirmacion = usuario` y el diálogo advierte que se está inactivando a sí mismo (P-06) →
-`PATCH /api/usuarios/{usuarioId}/estado` → `200`: recarga del listado.
+fila **no** es el de la prop `usuario`, la llamada sale directa; si **sí** lo es **y la fila está
+`activo = true`**, `confirmacion = usuario` y el diálogo advierte que se está inactivando a sí
+mismo (P-06, D-19) → `PATCH /api/usuarios/{usuarioId}/estado` → `200`: recarga del listado.
+
+**Precisión de P-06 acordada el 24/08/2026** (confirmada por el responsable tras T7): la
+confirmación se pide **solo al inactivar** la fila propia. Reactivarse a uno mismo no tiene
+consecuencia que advertir —devuelve el acceso en lugar de quitarlo—, así que ahí el diálogo sería
+ruido y la llamada sale directa como en cualquier otra fila. La acción sigue ofreciéndose en los
+dos sentidos: lo que cambia es solo si media el diálogo.
 
 **F-09 — Token vencido.** Cualquier llamada responde `401` → `ejecutar` invoca `onLogout()` → el
 shell borra la sesión, vuelve al inicio de sesión y desmonta el remote. El remote no pinta nada
@@ -685,6 +691,7 @@ tarea con interacción exige el nivel 4.
 | D-16 | Todas las clases CSS llevan el prefijo `mfa-` | Nombres genéricos como `.tabla` o `.boton` | Los estilos del shell y de los dos remotes conviven en el mismo documento cuando el módulo se monta: sin prefijo, una regla de este remote repintaría `mf-reservas` |
 | D-17 | El panel de bloqueos vive **dentro** de la pantalla de Canchas y recibe el `canchaId` por prop | Un componente de bloqueos con su propio selector de cancha | P-01 del C1; además un selector propio duplicaría el listado que ya está al lado y podría quedar desincronizado con él |
 | D-18 | La guardia de rol se evalúa en `AdminApp` **antes** de montar las pantallas | Comprobar el rol dentro de cada pantalla, o dejar que cada llamada devuelva `403` | Comprobarlo en la raíz garantiza que no sale ni una llamada (P-07); repetirlo en cada pantalla sería la misma condición escrita tres veces |
+| D-19 | La confirmación de P-06 se pide **solo al inactivar** la fila propia; reactivarse a uno mismo llama directo | Pedir la confirmación en los dos sentidos, por simetría con el resto del diálogo | La advertencia existe para que nadie se quede sin acceso por un clic. Reactivarse **devuelve** el acceso: no hay consecuencia que advertir, y un diálogo que pregunta "¿seguro?" ante una acción inocua enseña a confirmar sin leer, que es justo lo que le quita valor al de verdad. Precisión de P-06 acordada el 24/08/2026, tras T7 |
 
 ## 13. Fuera de alcance de este diseño
 

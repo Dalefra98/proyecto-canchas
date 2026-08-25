@@ -76,7 +76,16 @@ function AdminApp({ usuario, token, apiBaseUrl, onLogout }) {
       {vista === "reservas" ? (
         <PantallaReservas apiBaseUrl={apiBaseUrl} token={token} ejecutar={ejecutar} />
       ) : null}
-      {vista === "usuarios" ? <PantallaUsuarios /> : null}
+      {/* usuario baja tambien a esta pantalla: la fila propia se distingue
+          comparando su usuarioId con el de la sesion (P-06). */}
+      {vista === "usuarios" ? (
+        <PantallaUsuarios
+          usuario={usuario}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+        />
+      ) : null}
     </section>
   );
 }
