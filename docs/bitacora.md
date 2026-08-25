@@ -280,6 +280,61 @@ spec 06. La función `manejarSesionExpirada` del shell, sin llamador desde enton
 estrenada** por este remote: `ReservasApp` detecta el `401 NO_AUTENTICADO` en un único
 envoltorio y llama `onLogout()` (D-13).
 
+## Spec 08 — mf-administracion (remote de Module Federation)
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 24/08/2026 | C1 | Generar requirements.md de `mf-administracion`, segundo remote del proyecto | Sí, tras responder diez preguntas | La IA se detuvo en diez datos faltantes y, **igual que en la spec 07, ninguno era de contrato**: las diez eran de presentación o de puesta en marcha (cómo se reparten las pantallas y dónde viven los bloqueos, si el cambio de estado de una cancha se confirma, si el listado de bloqueos filtra por fecha, si el listado global lleva filtros, si el `usuarioId` de cada reserva se resuelve a nombre, qué pasa si el ADMIN se inactiva a sí mismo, qué pinta el remote ante un rol que no es ADMIN, qué microservicios lleva el `depends_on`, cómo se reparten las tareas y dónde vive el formulario). Una observación que el C1 aportó sin que se le pidiera: el PDF define este módulo en **dos** sitios que hay que leer juntos —§3.2 nombra dos pantallas y §3.1 asigna al módulo dos funcionalidades más, bloqueos y usuarios—, así que el alcance real son cuatro funcionalidades y no dos. Las respuestas quedaron como decisiones P-01 a P-10 |
+| 2 | 24/08/2026 | C2 | Generar design.md con modelo de estado, payloads, rutas consumidas, códigos HTTP y decisiones | Sí, sin correcciones | La IA aportó por su cuenta **tres decisiones que no estaban en las instrucciones y que separan este remote del anterior**: **D-04**, replicar `clienteApi.js` desde `mf-reservas` en vez de federarlo, porque un remote que dependa de otro deja de ser desplegable por separado (PDF §4.1) y la rúbrica §6 puntúa justo eso —son 90 líneas: la duplicación cuesta menos que el acoplamiento—; **D-06**, **no** cachear catálogos en la raíz, al revés que `ReservasApp` con su D-07, porque aquí el ADMIN **escribe**: un catálogo cacheado mostraría en la pantalla de Reservas el nombre viejo de una cancha recién editada; y **D-14**, que el `PATCH` de estado envíe el valor contrario al que **devolvió la API** para esa fila y no al de un interruptor con estado visual propio, porque con dos pestañas abiertas el interruptor mandaría un valor obsoleto. También verificó campo por campo contra el contrato y dejó escritas cuatro aclaraciones que parecen conflicto y no lo son: `nombre` de cancha frente a `nombre` de usuario, el `id` de la reserva, el `bloqueoId` que rellena el `{id}` del path del `DELETE`, y `activa` (cancha) frente a `activo` (usuario), que **no** se unifican |
+| 3 | 24-25/08/2026 | C3 | Ejecutar las ocho tareas de tasks.md, una por una | Sí, con dos hallazgos | Ocho tareas y no las siete que P-09 estimaba: el panel de bloqueos se separó del ABM de canchas porque son tres operaciones con formulario y confirmación propios. Dos hallazgos, detallados en la tabla siguiente. El del `grep` quedó además anotado como hallazgo de entorno al final de esta bitácora, porque aplica a cualquier comando que corra dentro de un contenedor Alpine |
+
+Tiempo invertido: ____
+
+**Hallazgos de la spec 08.** Dos, ninguno de contrato:
+
+| # | Hallazgo | Alcance | Dónde quedó resuelto |
+|---|---|---|---|
+| 1 | El comando de verificación de T8 escrito en `tasks.md`, `grep -rn 'fetch(' src --include=*.jsx`, **no existe en el contenedor**: `node:20-alpine` trae BusyBox y respondió `grep: unrecognized option: include=*.jsx` seguido de su modo de empleo. `--include`, `--exclude` y `-P` son de GNU grep. Agravante: BusyBox imprime la ayuda y **sigue**, así que en un `sh -c` con comandos encadenados por `;` los siguientes se ejecutan igual y es fácil leer la salida como si todo hubiera corrido | Entorno — cualquier comando que corra dentro de un contenedor Alpine | Comando corregido en el `tasks.md` de T8 a una tubería a un segundo `grep`, y anotado como hallazgo de entorno al final de esta bitácora. Regla para la spec 09: un comando de verificación que corre **dentro** de un contenedor Alpine se prueba antes de escribirlo, o se limita a opciones POSIX |
+| 2 | El diseño decía que la fila propia del ADMIN pasa por confirmación (P-06), pero **no distinguía el sentido del cambio**. Al implementar T7 apareció la pregunta: reactivarse a uno mismo **devuelve** el acceso, no lo quita, así que no hay consecuencia que advertir y un diálogo ahí es ruido que enseña a confirmar sin leer | Diseño — precisión, no corrección | T7. Se implementó la confirmación **solo al inactivar** la fila propia, se consultó al responsable y quedó incorporada al `design.md` como **D-19**, con su alternativa descartada, más la precisión fechada en §4.5 y en el flujo F-08 |
+
+**Observación de cierre:** es la **primera spec del proyecto sin ningún hallazgo que exigiera
+cambiar el contrato ni tocar un servicio cerrado**. Las siete anteriores dejaron rastro en
+`docs/contratos/README.md` —códigos de error nuevos, el rol `SERVICIO`, el parámetro `fecha` de
+los bloqueos, las notas de reportes, el `token` en las props del shell— y varias obligaron a
+volver sobre un microservicio ya entregado. Esta no: el `docker-compose.yml` fue el único archivo
+tocado fuera de `frontend/mf-administracion`, y solo en T1. El molde que dejaron las specs 06 y 07
+absorbió todo lo demás: el patrón de `webpack.config.js` y del servicio de Compose, la capa
+`src/api/` con su forma única de error, el envoltorio del `401` que llama `onLogout`, el prefijo
+de clases CSS y la regla única de hover, y la obligación de verificar en navegador toda tarea con
+interacción. Este remote consume **once** rutas contra las cinco del anterior y es el único que
+escribe en tres microservicios, y aun así no necesitó ni un campo nuevo: el contrato congelado en
+la spec 01 y afinado hasta la 06 ya lo cubría entero.
+
+Vale la pena anotar por qué, para la defensa: las diez preguntas del C1 fueron **todas** de
+presentación, exactamente como las nueve de la spec 07. Cuando el contrato está congelado de
+verdad, lo que queda por decidir en un microfrontend no es qué datos hay, sino cómo se muestran.
+
+**Estado de la spec 08.** Las ocho tareas fueron ejecutadas y verificadas con salida real:
+`mf-administracion` corre en `http://localhost:3002` como servicio de `docker-compose.yml`,
+publica su `remoteEntry.js` con `200`, y los dos remotes conviven —`localhost:3001` siguió
+respondiendo `200` en cada verificación—. La revisión de T8 dentro del contenedor confirmó que el
+único `fetch` del remote vive en `src/api/clienteApi.js`, que no hay `sessionStorage` ni
+`localStorage` en ninguna parte, que todas las clases CSS llevan el prefijo `mfa-` y que las once
+rutas construidas son las de §6.1, con `{ activa: ... }` para canchas y `{ activo: ... }` para
+usuarios. Con este remote quedan cerrados dos criterios de aceptación del PDF §7: el **2** —el
+administrador gestiona el catálogo y cancela cualquier reserva— y el **5** —un shell y **dos**
+remotes integrados por Module Federation—. Los recorridos de navegador de cada tarea quedan a
+cargo del responsable.
+
+**Lo que esta spec dejó pendiente a propósito:** `mf-reportes` (spec 09) y el **gateway Nginx**
+de la sección 5 de integración; hasta entonces este remote resuelve `/api` con su propio
+`devServer.proxy`, igual que el shell y que `mf-reservas`. El shell no se tocó en ninguna tarea:
+ya declaraba este remote, ya restringía la opción "Administracion" al rol `ADMIN` y ya entregaba
+las cuatro props desde la spec 06. Tampoco se tocó `mf-reservas`, pese a que `clienteApi.js` es
+casi idéntico en los dos: es la duplicación deliberada de D-04.
+
 ---
 
 **Hallazgos de entorno (aplican a todas las specs):**
