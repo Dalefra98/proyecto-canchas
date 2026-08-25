@@ -83,16 +83,20 @@ module.exports = {
         runtimeErrors: false
       }
     },
-    // Destino del proxy: nombres de contenedor. Lo ejecuta webpack serve DENTRO
-    // de la red de Docker, al contrario de las URLs de los remotes.
+    // Destino del proxy: el gateway Nginx, un unico nombre de contenedor (spec 10).
+    // Lo ejecuta webpack serve DENTRO de la red de Docker, al contrario de las URLs de
+    // los remotes. Este archivo ya no sabe donde vive cada microservicio: el reparto
+    // por dominio vive en infra/nginx/gateway.conf y en ningun otro lado.
+    // Los context se conservan tal cual (D-8): son los que dicen que consume este
+    // microfrontend.
     // Atiende solo cuando el remote se abre suelto en localhost:3001; montado
     // en el shell, proxya el devServer del shell.
     // webpack-dev-server 5 exige la forma de arreglo.
     proxy: [
-      { context: ["/api/usuarios"], target: "http://ms-usuarios:8080" },
-      { context: ["/api/canchas"], target: "http://ms-canchas:8080" },
-      { context: ["/api/reservas"], target: "http://ms-reservas:8080" },
-      { context: ["/api/reportes"], target: "http://ms-reportes:8080" }
+      { context: ["/api/usuarios"], target: "http://gateway:80" },
+      { context: ["/api/canchas"], target: "http://gateway:80" },
+      { context: ["/api/reservas"], target: "http://gateway:80" },
+      { context: ["/api/reportes"], target: "http://gateway:80" }
     ]
   }
 };

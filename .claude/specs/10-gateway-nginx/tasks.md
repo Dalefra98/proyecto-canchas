@@ -148,10 +148,14 @@ Deben verse las peticiones `/api/usuarios/sesiones`, `/api/canchas`, `/api/reser
 ## T4 — El `devServer.proxy` de los tres remotes apunta al gateway
 
 **Qué hace.** El mismo cambio de T3 en `frontend/mf-reservas/webpack.config.js` (cuatro entradas),
-`frontend/mf-administracion/webpack.config.js` (tres) y
-`frontend/mf-reportes/webpack.config.js` (una sola, `/api/reportes`): **solo el `target`**, más el
-comentario actualizado. La entrada única de `mf-reportes` se conserva tal cual —**D-15 de la spec
-09 queda intacta** (D-8)—.
+`frontend/mf-administracion/webpack.config.js` y `frontend/mf-reportes/webpack.config.js` (una
+sola, `/api/reportes`): **solo el `target`**, más el comentario actualizado. La entrada única de
+`mf-reportes` se conserva tal cual —**D-15 de la spec 09 queda intacta** (D-8)—.
+
+**Corrección aplicada el 25/08/2026 (DD-14).** `mf-administracion` declaraba **cuatro** `context`,
+incluido `/api/reportes`, un microservicio que no consume (P-08 de la spec 08). Esa entrada era
+residual —anterior al gateway y nunca usada— y **se elimina** en esta misma tarea: queda con los
+tres prefijos que realmente consume. Corrige D-8, con motivo escrito en el `requirements.md`.
 
 **Requisitos que cubre.** HU-02 completa.
 

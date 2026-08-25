@@ -87,16 +87,18 @@ module.exports = {
         runtimeErrors: false
       }
     },
-    // Destino del proxy: nombre de contenedor. Lo ejecuta webpack serve DENTRO
-    // de la red de Docker, al contrario de la URL del remoteEntry.js, que es de
-    // navegador.
+    // Destino del proxy: el gateway Nginx, un unico nombre de contenedor (spec 10).
+    // Lo ejecuta webpack serve DENTRO de la red de Docker, al contrario de la URL del
+    // remoteEntry.js, que es de navegador. Este archivo ya no sabe donde vive
+    // ms-reportes: el reparto por dominio vive en infra/nginx/gateway.conf.
     // Atiende solo cuando el remote se abre suelto en localhost:3003; montado
     // en el shell, proxya el devServer del shell.
-    // D-15: una sola entrada. Este remote consume unicamente /api/reportes;
-    // declarar los otros destinos sugeriria un acoplamiento que no existe.
+    // D-15 sigue en pie y no la toca el gateway: una sola entrada. Este remote consume
+    // unicamente /api/reportes; declarar los otros context sugeriria un acoplamiento
+    // que no existe (D-8 de la spec 10).
     // webpack-dev-server 5 exige la forma de arreglo.
     proxy: [
-      { context: ["/api/reportes"], target: "http://ms-reportes:8080" }
+      { context: ["/api/reportes"], target: "http://gateway:80" }
     ]
   }
 };

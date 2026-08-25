@@ -454,6 +454,17 @@ El shell mantiene los cuatro `context`, `mf-reservas` los cuatro que ya declara,
 que no existe"—, deja escrito en cada `webpack.config.js` qué consume realmente ese
 microfrontend, y es el cambio mínimo: una línea por archivo.
 
+**Corrección del 25/08/2026, detectada al ejecutar T4.** `mf-administracion` no declaraba tres
+prefijos sino **cuatro**: incluía `/api/reportes`, un microservicio que ese remote **no consume**
+—P-08 de la spec 08 fijó que depende de `ms-usuarios`, `ms-canchas` y `ms-reservas`, no de
+`ms-reportes`—. La entrada era **residual: anterior al gateway y nunca usada**, no un permiso
+que el gateway venga a quitar. Se elimina, y D-8 pasa a leerse así: cada microfrontend conserva
+los prefijos que **realmente consume**, que en los otros tres coinciden con los que ya declaraba.
+*Motivo de eliminar en vez de documentar:* declarar un prefijo que el remote no consume sugiere
+un acoplamiento inexistente, exactamente lo que D-15 evitó en `mf-reportes`; corregir el
+documento para que describiera la entrada residual sería documentar un error en vez de
+arreglarlo.
+
 **D-9 — El archivo se renombra a `infra/nginx/gateway.conf` (salida (b) de P-04).** La
 instrucción del 24/08/2026 decía "se reescribe" refiriéndose al contenido.
 *Motivo:* un archivo llamado `shell.conf` que ya no tiene ninguna relación con el shell —no sirve

@@ -356,7 +356,7 @@ clave de `devServer` —`port`, `host`, `allowedHosts`, `headers`, `hot`, `clien
 |---|---|---|---|
 | `frontend/shell/webpack.config.js` | `/api/usuarios`, `/api/canchas`, `/api/reservas`, `/api/reportes` | los cuatro `ms-*:8080` | `http://gateway:80` en las cuatro entradas |
 | `frontend/mf-reservas/webpack.config.js` | los mismos cuatro | los cuatro `ms-*:8080` | `http://gateway:80` en las cuatro |
-| `frontend/mf-administracion/webpack.config.js` | `/api/usuarios`, `/api/canchas`, `/api/reservas` | los tres `ms-*:8080` | `http://gateway:80` en las tres |
+| `frontend/mf-administracion/webpack.config.js` | `/api/usuarios`, `/api/canchas`, `/api/reservas` (ver DD-14) | los tres `ms-*:8080` | `http://gateway:80` en las tres |
 | `frontend/mf-reportes/webpack.config.js` | `/api/reportes` (**D-15 de la spec 09**, intacta) | `ms-reportes:8080` | `http://gateway:80` |
 
 El comentario que hoy explica el destino ("Destino del proxy: nombres de contenedor. Lo ejecuta
@@ -411,6 +411,7 @@ antiguo se lee como nuevo. La bitácora ya registró ese engaño dos veces.
 | DD-11 | Los cuatro frontends pasan a `depends_on: gateway` | Conservar además los `depends_on` hacia los `ms-*` | Un frontend ya no habla con ningún microservicio: declararlo sería declarar una dependencia falsa. El orden se mantiene por transitividad, y el acoplamiento real de cada remote sigue documentado en su `context` (D-8, §8.2) |
 | DD-12 | `shell.conf` se borra y `gateway.conf` se crea, en vez de renombrar | `git mv` conservando el historial | El archivo cambia de contenido casi por completo —pierde el `location /`, gana los cuatro `proxy_set_header`— y de propósito. El historial del archivo original queda igual en el repositorio; lo que importa es que no sobreviva un `shell.conf` que ya no describe nada (D-9, HU-09) |
 | DD-13 | El puerto publicado del gateway es `8090` | `8080:80`, el valor con el que se aprobó D-7 | `8080` es el puerto más disputado de una máquina de desarrollo: servidores de aplicaciones, herramientas y contenedores de otros proyectos lo toman por omisión. El proyecto no debe depender de que esté libre en la máquina de quien lo despliegue, y al responsable ya le ocurrió con un contenedor suyo de otro trabajo durante esta misma spec. `8090` no compite con nada del proyecto ni con ningún valor por omisión habitual. El cambio no toca `gateway.conf`: el puerto **interno** sigue siendo el `80` y el mapeo vive solo en `docker-compose.yml` |
+| DD-14 | `mf-administracion` pierde su `context` `/api/reportes` | Conservarlo, y corregir §9 y D-8 para que dijeran cuatro prefijos | El archivo declaraba cuatro `context`, pero ese remote **no consume `ms-reportes`** (P-08 de la spec 08). La entrada era **residual: anterior al gateway y nunca usada**, no un permiso que el gateway quite. Declarar un prefijo que el remote no consume sugiere un acoplamiento inexistente, que es el criterio con el que D-15 dejó a `mf-reportes` con una sola entrada. Documentar la entrada residual habría sido documentar un error en vez de arreglarlo. Corrige D-8, con fecha y motivo en el `requirements.md` |
 
 ## 13. Fuera de alcance de este diseño
 
