@@ -228,6 +228,58 @@ resuelve `/api` con su propio `devServer.proxy` (P-02, con fecha de revisión es
 `manejarSesionExpirada` (P-08), porque las dos rutas del shell son públicas y ningún `401` de
 token vencido puede llegarle; la estrenan los remotes al recibir un `401` y llamar `onLogout`.
 
+## Spec 07 — mf-reservas (remote de Module Federation)
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 24/08/2026 | C1 | Generar requirements.md de `mf-reservas`, primer remote del proyecto | Sí, tras responder nueve preguntas | La IA se detuvo en nueve datos faltantes y **ninguno era de contrato**: las nueve eran de presentación o de puesta en marcha (cómo se llega a la pantalla de nueva reserva, si el selector bloquea fechas pasadas, si el filtro por deporte se resuelve en el cliente, qué muestra el remote abierto suelto en `localhost:3001`, si el listado se filtra, cómo se confirma una cancelación, dónde vive el proxy, si el shell se modifica y en qué orden se verifica). **Es la primera spec sin una sola pregunta sobre campos ni rutas**: el contrato congelado ya cubría todo lo que el remote necesitaba, y las respuestas quedaron como decisiones P-01 a P-09 |
+| 2 | 24/08/2026 | C2 | Generar design.md con modelo de estado, payloads, rutas consumidas, códigos HTTP y decisiones | Sí, sin correcciones | La IA aportó por su cuenta **tres hallazgos que no estaban en las instrucciones**: **D-03**, `Access-Control-Allow-Origin: *` en el `devServer` del remote, porque el `remoteEntry.js` lo pide una página servida en `localhost:3000` y sin ese encabezado el navegador bloquea la descarga y el shell mostraría "Modulo no disponible" para siempre; **D-09**, que `new Date().toISOString().slice(0, 10)` devuelve **el día siguiente** en Ecuador (UTC-5) entre las 19:00 y las 23:59, así que la fecha de hoy se arma con los campos locales de `Date` y la grilla no abre en una fecha que el usuario no eligió; y **D-15**, importar el CSS desde `ReservasApp.jsx` y **no** desde `bootstrap.jsx`, porque el shell monta el módulo expuesto directamente y **nunca ejecuta el `bootstrap` del remote**, con lo que el remote se quedaría sin estilos en su único caso real de uso. Además sustituyó las tablas sin equivalente en un remote (base de datos, endpoints expuestos, excepciones de servidor) por su análogo, igual que la spec 06 |
+| 3 | 24-25/08/2026 | C3 | Ejecutar las siete tareas de tasks.md, una por una | Sí, con tres hallazgos | Tres hallazgos, detallados en la tabla siguiente. Dos de ellos —el encabezado `X_TEST` y el criterio de verificación de T2— quedaron además anotados como hallazgos de entorno al final de esta bitácora, porque aplican a los tres remotes |
+
+Tiempo invertido: ____
+
+**Hallazgos de la spec 07.** Tres, ninguno previsto en el diseño:
+
+| # | Hallazgo | Alcance | Dónde quedó resuelto |
+|---|---|---|---|
+| 1 | `webpack-dev-server` 5.2.0 agrega el encabezado **`X_TEST: TEST`** a toda respuesta cuando la configuración declara `devServer.headers`. No sale de nuestra configuración: es una línea de depuración de esa versión, en `node_modules/webpack-dev-server/lib/Server.js:3060`, dentro del mismo bloque que aplica los encabezados declarados. Se ve en los `curl.exe` del remote y no en los del shell, que no declara `headers` | Entorno — los tres remotes | No se resuelve: quitarlo costaría el `Access-Control-Allow-Origin: *` que D-03 necesita. Anotado como hallazgo de entorno para que no se persiga como defecto en las specs 08 y 09 |
+| 2 | El `compiled successfully` de T2 **era el de T1**. La capa `api/` y `MensajeError.jsx` se crearon sin que ningún archivo los importara todavía, y **webpack solo compila lo alcanzable desde el `entry`**: los cuatro quedaban fuera del grafo de módulos y el registro habría dicho `compiled successfully` aunque tuvieran errores de sintaxis. Se detectó al leer el registro con `--timestamps` y ver que la marca era **anterior** al último guardado. **Tercer caso del proyecto de criterio de verificación insuficiente** | Método de verificación — todo el frontend | Criterio reemplazado en el `tasks.md` de T2: compilación explícita de los cuatro archivos dentro del contenedor con el mismo `.babelrc` que usa `babel-loader`, vía `@babel/core` (no `@babel/cli`, que no está entre las doce dependencias). La regla de leer siempre con `--timestamps` quedó al inicio del `tasks.md` |
+| 3 | Serie de bugs de CSS que **solo aparecían en el navegador**: los botones secundarios perdían el texto al pasar el cursor (texto oscuro sobre el fondo verde oscuro que el `button:hover:enabled` del shell impone sin tocar `color`), las dos líneas de cada bloque de la grilla salían pegadas (`08:00-09:00Libre`), y el campo de fecha desalineaba la fila de filtros por el `input { margin-bottom: 14px }` del shell, que el `select` no recibe. **Ninguno detectable por log**: el CSS compila igual esté bien o mal | Código — `estilos.css` del remote, con causa en el CSS global del shell | T7. El hover se unificó en **una sola regla** `.mfr-modulo button:hover:enabled` que lee variables declaradas por cada clase de botón, en vez de una regla por botón: así ninguna clase puede quedarse con el hover del shell, ni las actuales ni las de las specs 08 y 09. El reparto vertical del bloque y la altura común de los controles se corrigieron en el mismo paso |
+
+**Observación:** esta spec **confirma el patrón del frontend** que abrió la spec 06. En los
+cuatro microservicios, la salida de un comando prueba comportamiento: un `curl.exe` con su
+código HTTP y su JSON, o un `SELECT` contra la base. En el frontend no. Los tres hallazgos de
+C3 exigieron abrir el navegador: el `X_TEST` apareció en una cabecera que había que mirar, el
+`compiled successfully` de T2 mentía sobre *qué* se había compilado, y los bugs de CSS son
+invisibles para webpack por definición. Con las tres specs de la sección de frontend ya
+recorridas, el hueco no es un accidente de una tarea: es la forma de verificar de esta capa, y
+las specs 08 y 09 tienen que presupuestar el paso de navegador en cada tarea con interacción.
+
+Una diferencia con la spec 06 vale la pena anotarla: allí los hallazgos fueron **de entorno**
+(el watcher, el escapado de PowerShell, el overlay) y uno de **código**; aquí los tres son de
+**criterio de verificación y de presentación**. Ninguno tocó la lógica de negocio, y era lo
+esperable: el remote no implementa ninguna regla de negocio (§11 del diseño), así que no tenía
+dónde equivocarse en RN-01 a RN-08.
+
+**Estado de la spec 07.** Las siete tareas fueron ejecutadas y verificadas con salida real:
+`mf-reservas` corre en `http://localhost:3001` como servicio de `docker-compose.yml`, publica
+su `remoteEntry.js` con `200` y `Access-Control-Allow-Origin: *`, y el shell lo monta **en
+lugar** del "Modulo no disponible" que la spec 06 dejaba como criterio de HU-06. La revisión
+campo por campo del §1 del diseño se rehízo en T7 y no encontró ninguna discrepancia: los
+trece campos usados son los del contrato congelado, el cuerpo de `POST /api/reservas` sigue
+siendo de tres campos y las cuatro props se leen tal como llegan. El recorrido completo de
+navegador de T7 queda a cargo del responsable.
+
+**Lo que esta spec dejó pendiente a propósito:** `mf-administracion` y `mf-reportes` (specs 08
+y 09) y el **gateway Nginx** de la sección 5 de integración; hasta entonces este remote
+resuelve `/api` con su propio `devServer.proxy`, igual que el shell. El servicio `shell` no se
+tocó en ninguna tarea (P-08): ya declaraba este remote y ya entregaba las cuatro props desde la
+spec 06. La función `manejarSesionExpirada` del shell, sin llamador desde entonces, **queda
+estrenada** por este remote: `ReservasApp` detecta el `401 NO_AUTENTICADO` en un único
+envoltorio y llama `onLogout()` (D-13).
+
 ---
 
 **Hallazgos de entorno (aplican a todas las specs):**
