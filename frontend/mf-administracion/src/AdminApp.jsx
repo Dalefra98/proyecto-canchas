@@ -70,7 +70,9 @@ function AdminApp({ usuario, token, apiBaseUrl, onLogout }) {
 
       <NavegacionInterna vista={vista} onCambiarVista={cambiarVista} />
 
-      {vista === "canchas" ? <PantallaCanchas /> : null}
+      {vista === "canchas" ? (
+        <PantallaCanchas apiBaseUrl={apiBaseUrl} token={token} ejecutar={ejecutar} />
+      ) : null}
       {vista === "reservas" ? <PantallaReservas /> : null}
       {vista === "usuarios" ? <PantallaUsuarios /> : null}
     </section>
