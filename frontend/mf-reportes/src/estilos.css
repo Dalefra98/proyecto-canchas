@@ -123,6 +123,116 @@
   --mfrep-borde-hover: #1a4267;
 }
 
+/* ---- Pantalla de un reporte ---- */
+
+.mfrep-pantalla {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.mfrep-pantalla h3 {
+  margin: 0;
+}
+
+/* El periodo que devolvio la respuesta, que no siempre es el escrito en el
+   selector (HU-10, F-04). */
+.mfrep-periodo {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1f4e79;
+}
+
+.mfrep-nota {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #555555;
+  max-width: 44rem;
+}
+
+/* ---- Tabla del reporte ---- */
+
+.mfrep-tabla {
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.mfrep-tabla th,
+.mfrep-tabla td {
+  border: 1px solid #d0d0d0;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.mfrep-tabla thead th {
+  background-color: #eef3f8;
+  color: #1f4e79;
+  white-space: nowrap;
+}
+
+.mfrep-numero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La celda del porcentaje lleva el numero y la barra en la misma linea: la barra
+   acompana al valor, no lo reemplaza (P-09). */
+.mfrep-celda-porcentaje {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mfrep-celda-porcentaje .mfrep-numero {
+  min-width: 3.5rem;
+}
+
+/* ---- Barra de porcentaje (CSS plano, sin librerias de graficos) ---- */
+
+.mfrep-barra {
+  display: inline-block;
+  width: 8rem;
+  height: 0.7rem;
+  background-color: #e6e6e6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mfrep-barra-relleno {
+  display: block;
+  height: 100%;
+  background-color: #1f4e79;
+}
+
+/* ---- Indicador de mayor y menor demanda (HU-05) ---- */
+
+.mfrep-demanda {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background-color: #f5f8fb;
+  border: 1px solid #d0dceb;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.mfrep-demanda-fila {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.mfrep-demanda dt {
+  font-weight: 600;
+  color: #1f4e79;
+}
+
+.mfrep-demanda dd {
+  margin: 0;
+}
+
 /* ---- Error ---- */
 
 .mfrep-mensaje-error {

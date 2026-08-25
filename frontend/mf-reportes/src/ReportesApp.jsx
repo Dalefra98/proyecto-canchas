@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { ErrorApi } from "./api/clienteApi";
 import NavegacionInterna from "./components/NavegacionInterna";
+import PantallaOcupacion from "./components/PantallaOcupacion";
 import SelectorRango from "./components/SelectorRango";
 import "./estilos.css";
 
@@ -18,6 +19,11 @@ function ReportesApp({ usuario, token, apiBaseUrl, onLogout }) {
   const [rango, setRango] = useState({ desde: "", hasta: "" });
   const [consulta, setConsulta] = useState(null);
   const [avisoRango, setAvisoRango] = useState(null);
+  // D-16: el cargando vive aqui, no en la pantalla. ReportesApp ya es dueno de
+  // vista, rango y consulta, que son el ciclo completo de una consulta, y el
+  // estado de carga es parte de ese ciclo. Baja por props al SelectorRango, que
+  // deshabilita su boton, y a la pantalla activa, que lo enciende y lo apaga.
+  const [cargando, setCargando] = useState(false);
 
   // Seccion 4.1: unico punto del remote que decide que hacer con un 401. Las
   // tres rutas de este remote son autenticadas (seccion 6.1), asi que un 401
@@ -88,9 +94,14 @@ function ReportesApp({ usuario, token, apiBaseUrl, onLogout }) {
   // D-05: cambiar de reporte conserva el rango escrito y pone la consulta en
   // null. Asi la pantalla nueva se monta sin llamar a nada y hay que pulsar
   // consultar otra vez (HU-10, F-03).
+  //
+  // D-16: el cargando se apaga en el MISMO paso. Salir de una pantalla mientras
+  // su consulta viaja dejaria el boton deshabilitado por una carga de una
+  // pantalla ya desmontada, que nunca va a avisar que termino.
   function cambiarVista(claveVista) {
     setConsulta(null);
     setAvisoRango(null);
+    setCargando(false);
     setVista(claveVista);
   }
 
@@ -99,7 +110,7 @@ function ReportesApp({ usuario, token, apiBaseUrl, onLogout }) {
       <h2>Reportes</h2>
       <SelectorRango
         rango={rango}
-        cargando={false}
+        cargando={cargando}
         onCambiarRango={cambiarRango}
         onConsultar={consultar}
       />
@@ -109,12 +120,19 @@ function ReportesApp({ usuario, token, apiBaseUrl, onLogout }) {
         </p>
       )}
       <NavegacionInterna vista={vista} onCambiarVista={cambiarVista} />
-      {/* T3 deja el esqueleto: las tres pantallas llegan en T4, T5 y T6, y son
-          ellas las que reciben consulta y llaman a su ruta. Hasta entonces no
-          sale ninguna peticion. */}
-      <p className="mfrep-vacio">
-        Elija un rango de fechas y pulse Consultar.
-      </p>
+      {vista === "ocupacion" ? (
+        <PantallaOcupacion
+          consulta={consulta}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+          onCargando={setCargando}
+        />
+      ) : (
+        // Las pantallas de Reservas y Cancelaciones llegan en T5 y T6. Hasta
+        // entonces esas dos vistas no llaman a ninguna ruta.
+        <p className="mfrep-vacio">Elija un rango de fechas y pulse Consultar.</p>
+      )}
     </section>
   );
 }
