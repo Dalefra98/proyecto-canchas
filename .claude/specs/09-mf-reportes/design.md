@@ -226,8 +226,14 @@ declara aquí campo por campo, con su tipo, su valor inicial y su restricción.
 | `rango` | `{ desde, hasta }` | `{ desde: "", hasta: "" }` | dos cadenas `AAAA-MM-DD` o vacías; es lo que el administrador está escribiendo | HU-01, P-03 |
 | `consulta` | `{ desde, hasta, intento }` o `null` | `null` | `null` significa "no hay nada consultado todavía"; `desde` y `hasta` son los del momento de pulsar consultar | HU-01, P-02 |
 | `avisoRango` | string o `null` | `null` | aviso propio cuando falta `desde` o `hasta`; no es un error de la API | HU-01 |
+| `cargando` | boolean | `false` | inicial `false`, no `true`: al montar no se llama a nada (P-02). Baja por props **al `SelectorRango` y a la pantalla activa** | HU-01 |
 
-Tres reglas de transición, que son el corazón de P-02 y P-03:
+`cargando` vive aquí y no en la pantalla porque `ReportesApp` ya es dueño de `vista`, `rango` y
+`consulta`, que son el ciclo completo de una consulta: el estado de carga es parte de ese ciclo.
+La alternativa —guardarlo en la pantalla y subirlo por callback— haría que el dato viajara hacia
+arriba solo para volver a bajar al selector, que es el camino largo para lo mismo (D-16).
+
+Cuatro reglas de transición, que son el corazón de P-02 y P-03:
 
 - Escribir en un campo cambia `rango` y **no** toca `consulta`: la tabla en pantalla sigue siendo
   la del rango con el que se consultó (HU-10).
@@ -236,6 +242,10 @@ Tres reglas de transición, que son el corazón de P-02 y P-03:
   reintento tras un `500` no dispararía nada porque `desde` y `hasta` no cambiaron (D-06).
 - Cambiar de `vista` pone `consulta` en `null` y **conserva** `rango`. Así la pantalla nueva se
   monta sin llamar a nada y el rango escrito sigue ahí: exactamente lo que P-03 pidió (D-05).
+- Cambiar de `vista` pone además `cargando` en `false`, **en el mismo paso** que `consulta` en
+  `null`. Sin esto, salir de una pantalla mientras su consulta viaja dejaría el botón consultar
+  deshabilitado por una carga de una pantalla ya desmontada, que nunca va a avisar que terminó:
+  el módulo quedaría bloqueado hasta cambiar de vista otra vez (D-16).
 
 `ReportesApp` aporta además dos piezas que no son estado:
 
@@ -254,8 +264,12 @@ Las tres tienen la misma forma de estado. Cambian solo el nombre del payload y l
 | Campo | Tipo | Valor inicial | Restricciones | Origen |
 |---|---|---|---|---|
 | `reporte` | payload del reporte o `null` | `null` | `null` mientras no se haya consultado; se guarda la respuesta **completa**, con su `desde` y su `hasta` | HU-02, HU-03, HU-04 |
-| `cargando` | boolean | `false` | inicial `false`, no `true`: al montar no se llama a nada (P-02) | HU-01 |
 | `error` | `{ codigo, mensaje }` o `null` | `null` | error de la última consulta | HU-09 |
+
+`cargando` **no** es estado de la pantalla: vive en `ReportesApp` (§4.1) y llega por prop. La
+pantalla lo **enciende y apaga** llamando al `onCargando` que recibe —antes de lanzar la llamada
+y al terminarla, con éxito o con error—, pero no guarda una copia propia: dos copias del mismo
+dato se desincronizan en cuanto una de las dos se pierde al desmontar (D-16).
 
 | Pantalla | Payload de `reporte` | Columnas de la tabla | Indicador |
 |---|---|---|---|
@@ -459,12 +473,12 @@ escritura o de recursos por identificador, y este remote no escribe nada.
 
 | Componente | Responsabilidad | Qué **no** hace |
 |---|---|---|
-| `ReportesApp` | módulo expuesto; guarda `vista`, `rango`, `consulta` y `avisoRango`; envoltorio del `401`; guardia de rol | no llama a la API, no guarda reportes |
+| `ReportesApp` | módulo expuesto; guarda `vista`, `rango`, `consulta`, `avisoRango` y `cargando`; envoltorio del `401`; guardia de rol | no llama a la API, no guarda reportes |
 | `NavegacionInterna` | tres botones, uno por reporte; marca el activo | no dibuja cabecera, ni Inicio, ni cierre de sesión |
-| `SelectorRango` | dos campos de fecha y el botón consultar; deshabilita el botón mientras se carga | no valida reglas de negocio, no compara `desde` con `hasta` |
-| `PantallaOcupacion` | pide su ruta, guarda su reporte, pinta tabla, barra e indicador | no recalcula `porcentajeOcupacion`, no agrupa por deporte |
-| `PantallaReservas` | pide su ruta, guarda su reporte, pinta tabla e indicador | no suma totales por deporte (P-04) |
-| `PantallaCancelaciones` | pide su ruta, guarda su reporte, pinta tabla | no muestra `deporte`, no pinta indicador (P-05) |
+| `SelectorRango` | dos campos de fecha y el botón consultar; deshabilita el botón mientras se carga, con el `cargando` que **recibe por prop desde `ReportesApp`** (§4.1) | no guarda `cargando`, no valida reglas de negocio, no compara `desde` con `hasta` |
+| `PantallaOcupacion` | pide su ruta, guarda su reporte, pinta tabla, barra e indicador; **enciende y apaga el `cargando` de `ReportesApp`** con el `onCargando` recibido | no guarda su propio `cargando`, no recalcula `porcentajeOcupacion`, no agrupa por deporte |
+| `PantallaReservas` | pide su ruta, guarda su reporte, pinta tabla e indicador; enciende y apaga el `cargando` de `ReportesApp` | no guarda su propio `cargando`, no suma totales por deporte (P-04) |
+| `PantallaCancelaciones` | pide su ruta, guarda su reporte, pinta tabla; enciende y apaga el `cargando` de `ReportesApp` | no guarda su propio `cargando`, no muestra `deporte`, no pinta indicador (P-05) |
 | `IndicadorDemanda` | recibe `items` y el nombre de la métrica; calcula máximo y mínimo y lista **todas** las canchas empatadas | no inventa canchas, no mezcla métricas, no se pinta con `items` vacío |
 | `BarraPorcentaje` | recibe `porcentajeOcupacion` y dibuja una barra cuyo ancho es ese valor sobre 100 | no reemplaza al número, no redondea |
 | `MensajeError` | pinta `{ codigo, mensaje }` tal como llegó | no reescribe ni traduce el `mensaje` |
@@ -480,7 +494,8 @@ ninguna llamada** (P-02).
 
 **F-02 — Primera consulta.** El administrador escribe `desde` y `hasta` y pulsa consultar. Si
 falta uno, se pinta `avisoRango` y no se llama. Si están los dos, `consulta` toma el rango y el
-`intento` sube; `PantallaOcupacion` lo detecta, pone `cargando`, llama a `obtenerOcupacion` a
+`intento` sube; `PantallaOcupacion` lo detecta, enciende el `cargando` de `ReportesApp` con el
+`onCargando` recibido, llama a `obtenerOcupacion` a
 través de `ejecutar` y pinta el resultado. Solo se llama **la ruta de la pantalla visible**.
 
 **F-03 — Cambio de reporte.** El administrador pulsa Cancelaciones. `vista` cambia,
@@ -572,6 +587,7 @@ de prueba, con `mf-reservas`: el seed no las trae y esta spec no lo toca.
 | D-13 | La guardia de rol se evalúa en `ReportesApp` **antes** de montar las pantallas | Comprobar el rol dentro de cada pantalla, o dejar que las tres rutas devuelvan `403` | Comprobarlo en la raíz garantiza que no sale ni una llamada (P-07); repetirlo en cada pantalla sería la misma condición escrita tres veces |
 | D-14 | Prefijo de clases CSS `mfrep-` | `mfr-`, por simetría con `mfa-` de administración | `mfr-` ya es de `mf-reservas`: reutilizarlo repintaría ese remote, que es exactamente lo que el prefijo existe para evitar. Los tres remotes conviven en el mismo documento |
 | D-15 | El `proxy` del `devServer` declara **solo** `/api/reportes` | Copiar las cuatro entradas de `mf-administracion` por simetría | Declarar destinos que el remote nunca llama sugiere un acoplamiento que no existe y, si algún día se rompiera el aislamiento, el proxy ya lo estaría permitiendo en silencio |
+| D-16 | `cargando` **sube a `ReportesApp`** y baja por props al `SelectorRango` y a la pantalla activa; cambiar de vista lo pone en `false` junto con `consulta` en `null` | Guardarlo en cada pantalla y subirlo al selector con un callback `onCargandoCambio` | `ReportesApp` ya es dueño de `vista`, `rango` y `consulta`, que son el ciclo completo de una consulta: el estado de carga es parte de ese ciclo. Con la alternativa el dato vive abajo y sube por callback solo para volver a bajar al selector, que es el camino largo para lo mismo. Precisión acordada el 25/08/2026, tras T3, sobre un hueco que el diseño no cubría |
 
 ## 13. Fuera de alcance de este diseño
 

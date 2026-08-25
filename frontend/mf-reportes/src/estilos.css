@@ -19,8 +19,7 @@
   gap: 1rem;
 }
 
-/* Aviso de la guardia de rol (P-07): el modulo no se monta y esto es lo unico
-   que se pinta. */
+/* Aviso de la guardia de rol (P-07) y del rango incompleto (HU-01). */
 .mfrep-aviso {
   margin: 0;
   color: #7a5200;
@@ -28,4 +27,126 @@
   border: 1px solid #b07d00;
   border-radius: 4px;
   padding: 0.5rem 0.75rem;
+}
+
+/* Texto de "elija un rango y consulte" y de reporte sin datos. */
+.mfrep-vacio {
+  margin: 0;
+  color: #555555;
+}
+
+/* ---- Selector de rango (uno solo para los tres reportes, P-03) ---- */
+
+.mfrep-rango {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+/* margin: 0 anula el "label { margin-bottom: 4px }" del shell, que dejaba los
+   campos desalineados entre si. */
+.mfrep-rango label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* height fija el alto en vez de dejarlo al contenido: el input de tipo date
+   suma el widget nativo del calendario y crece mas que un boton con el mismo
+   padding. box-sizing hace que padding y borde entren dentro de esa altura, y
+   margin: 0 anula el "input { margin-bottom: 14px }" del shell. */
+.mfrep-rango input {
+  border: 1px solid #b8b8b8;
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.95rem;
+  height: 2.25rem;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.mfrep-boton-consultar {
+  background-color: #1f4e79;
+  border: 1px solid #1f4e79;
+  border-radius: 4px;
+  padding: 0 0.9rem;
+  height: 2.25rem;
+  box-sizing: border-box;
+  cursor: pointer;
+  font: inherit;
+  color: #ffffff;
+  --mfrep-fondo-hover: #1a4267;
+  --mfrep-texto-hover: #ffffff;
+  --mfrep-borde-hover: #1a4267;
+}
+
+.mfrep-boton-consultar:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ---- Navegacion interna (tres reportes, HU-10) ---- */
+
+.mfrep-navegacion {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid #d0d0d0;
+  padding-bottom: 0.5rem;
+}
+
+/* El estado inactivo declara su propio fondo y su propio color: sin fondo
+   explicito el boton queda transparente y hereda el color del CSS del shell,
+   que convive en la misma pagina (D-14). */
+.mfrep-navegacion-opcion {
+  background-color: #ffffff;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+  color: #1f4e79;
+  --mfrep-fondo-hover: #eef3f8;
+  --mfrep-texto-hover: #1f4e79;
+  --mfrep-borde-hover: #1f4e79;
+}
+
+.mfrep-navegacion-opcion.mfrep-activa {
+  background-color: #1f4e79;
+  border-color: #1f4e79;
+  color: #ffffff;
+  --mfrep-fondo-hover: #1a4267;
+  --mfrep-texto-hover: #ffffff;
+  --mfrep-borde-hover: #1a4267;
+}
+
+/* ---- Error ---- */
+
+.mfrep-mensaje-error {
+  margin: 0;
+  color: #a12020;
+  background-color: #fdeaea;
+  border: 1px solid #a12020;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+/* ---- Hover: una sola regla para todos los botones del remote ---- */
+
+/* Resolverlo boton por boton deja fuera a los que no tienen clase propia, y esos
+   se quedan con el "button:hover:enabled" del shell, que cambia el fondo a su
+   verde oscuro y no toca el color del texto: un boton de texto oscuro queda
+   ilegible sobre fondo oscuro. Es el problema que ya documentaron mf-reservas y
+   mf-administracion (hallazgo 3 de la spec 08).
+
+   El criterio vive en un solo sitio: el hover cambia minimamente fondo y borde,
+   y el texto conserva el color que cada regla declara junto al suyo de reposo.
+   :enabled deja fuera los botones deshabilitados mientras una peticion viaja. */
+.mfrep-modulo button:hover:enabled {
+  background-color: var(--mfrep-fondo-hover);
+  color: var(--mfrep-texto-hover);
+  border-color: var(--mfrep-borde-hover);
 }
