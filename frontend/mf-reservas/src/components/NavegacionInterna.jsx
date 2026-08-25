@@ -10,6 +10,12 @@ const OPCIONES = [
 ];
 
 function NavegacionInterna({ vista, onCambiarVista }) {
+  // "nuevaReserva" no es una opcion de la navegacion (D-17) pero es parte del
+  // flujo de Disponibilidad: sin esto ninguna de las dos opciones coincide con
+  // la vista y las dos quedan pintadas como inactivas. Solo decide que clase se
+  // aplica; la vista no cambia.
+  const opcionActiva = vista === "nuevaReserva" ? "disponibilidad" : vista;
+
   return (
     <nav className="mfr-navegacion">
       {OPCIONES.map((opcion) => (
@@ -17,7 +23,9 @@ function NavegacionInterna({ vista, onCambiarVista }) {
           key={opcion.clave}
           type="button"
           className={
-            vista === opcion.clave ? "mfr-navegacion-opcion mfr-activa" : "mfr-navegacion-opcion"
+            opcionActiva === opcion.clave
+              ? "mfr-navegacion-opcion mfr-activa"
+              : "mfr-navegacion-opcion"
           }
           onClick={() => onCambiarVista(opcion.clave)}
         >

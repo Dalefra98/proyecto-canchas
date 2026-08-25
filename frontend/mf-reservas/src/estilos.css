@@ -4,16 +4,26 @@
    remote sin estilos en su unico caso real de uso.
 
    Todas las clases llevan el prefijo mfr- (D-16): el CSS del shell y el del
-   remote conviven en la misma pagina y son globales.
+   remote conviven en la misma pagina y son globales, asi que una clase con el
+   mismo nombre en los dos proyectos se pisaria segun el orden de carga.
 
-   En T3 este archivo esta al minimo: T7 lo completa con la grilla, el
-   formulario y el listado. */
+   CSS plano, sin librerias de UI (CLAUDE.md seccion 3). */
+
+/* ---- Contenedor del modulo y pantallas ---- */
 
 .mfr-modulo {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
+
+.mfr-pantalla {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ---- Navegacion interna (dos opciones, D-17) ---- */
 
 .mfr-navegacion {
   display: flex;
@@ -22,22 +32,287 @@
   padding-bottom: 0.5rem;
 }
 
+/* El estado inactivo declara su propio fondo y su propio color: "background:
+   none" dejaba el boton transparente y el color lo heredaba del CSS del shell,
+   que convive en la misma pagina (D-16). */
 .mfr-navegacion-opcion {
-  background: none;
+  background-color: #ffffff;
   border: 1px solid #d0d0d0;
   border-radius: 4px;
   padding: 0.4rem 0.9rem;
   cursor: pointer;
   font: inherit;
+  color: #1f4e79;
+  --mfr-fondo-hover: #eef3f8;
+  --mfr-texto-hover: #1f4e79;
+  --mfr-borde-hover: #1f4e79;
 }
 
 .mfr-navegacion-opcion.mfr-activa {
   background-color: #1f4e79;
   border-color: #1f4e79;
   color: #ffffff;
+  --mfr-fondo-hover: #1a4267;
+  --mfr-texto-hover: #ffffff;
+  --mfr-borde-hover: #1a4267;
+}
+
+/* ---- Botones ---- */
+
+.mfr-boton {
+  background-color: #1f4e79;
+  border: 1px solid #1f4e79;
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  font: inherit;
+  --mfr-fondo-hover: #1a4267;
+  --mfr-texto-hover: #ffffff;
+  --mfr-borde-hover: #1a4267;
+}
+
+.mfr-boton-secundario {
+  background-color: #ffffff;
+  border: 1px solid #1f4e79;
+  border-radius: 4px;
+  color: #1f4e79;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  font: inherit;
+  --mfr-fondo-hover: #eef3f8;
+  --mfr-texto-hover: #1f4e79;
+  --mfr-borde-hover: #1f4e79;
+}
+
+.mfr-boton:disabled,
+.mfr-boton-secundario:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mfr-acciones {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ---- Filtros y campos de la pantalla de disponibilidad ---- */
+
+.mfr-filtros {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+/* margin: 0 anula el "label { margin-bottom: 4px }" del shell, que solo
+   afectaria a los tres campos y no al boton Consultar, que no es un label. */
+.mfr-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* Los tres controles comparten altura, tamano de letra y caja para que la fila
+   quede alineada por la base junto al boton Consultar.
+
+   margin: 0 es lo que corregia la desalineacion del campo de fecha: el shell
+   declara "input { margin-bottom: 14px }" y no declara nada para "select", asi
+   que solo el input de fecha arrastraba ese margen y, con align-items:
+   flex-end, quedaba empujado respecto a Deporte y Cancha.
+
+   height fija el alto en vez de dejarlo al contenido: el input de tipo date
+   suma el widget nativo del calendario y crece mas que un select con el mismo
+   padding. box-sizing hace que el padding y el borde entren dentro de esa
+   altura. */
+.mfr-campo select,
+.mfr-campo input {
+  border: 1px solid #b8b8b8;
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.95rem;
+  height: 2.25rem;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* El boton de la fila iguala la altura y la letra de los controles. El padding
+   vertical pasa a 0 porque la altura ya la fija height; el del shell
+   ("button { padding: 9px 16px; font-size: 15px }") lo dejaba mas alto. */
+.mfr-filtros .mfr-boton {
+  height: 2.25rem;
+  padding: 0 1rem;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+/* ---- Grilla de bloques ---- */
+
+.mfr-grilla {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mfr-grilla-encabezado {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.mfr-grilla-vacia {
+  margin: 0;
+  color: #555555;
+}
+
+.mfr-grilla-bloques {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+/* Detalle detectado al verificar T4: las dos lineas del boton salian pegadas
+   ("08:00-09:00Libre"). Los dos span ya existian; lo que faltaba era el reparto
+   vertical del boton. Es estilo, no comportamiento. */
+.mfr-bloque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  border-radius: 4px;
+  padding: 0.5rem 0.4rem;
+  font: inherit;
+}
+
+.mfr-bloque-horas {
+  font-weight: bold;
+}
+
+.mfr-bloque-estado {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mfr-bloque-libre {
+  background-color: #eaf7ee;
+  border: 1px solid #1d6b32;
+  color: #1d6b32;
+  cursor: pointer;
+  --mfr-fondo-hover: #ddf0e4;
+  --mfr-texto-hover: #145224;
+  --mfr-borde-hover: #145224;
+  /* La sombra interior engruesa el borde sin usar border-width, que
+     desplazaria el contenido del boton al entrar el raton. */
+  --mfr-sombra-hover: inset 0 0 0 1px #145224;
+}
+
+/* Los ocupados van disabled y no llevan hover: no son seleccionables. */
+.mfr-bloque-ocupado {
+  background-color: #f0f0f0;
+  border: 1px solid #b8b8b8;
+  color: #6b6b6b;
+  cursor: not-allowed;
+}
+
+/* ---- Formulario de nueva reserva ---- */
+
+.mfr-resumen {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+}
+
+.mfr-resumen dt {
+  font-weight: bold;
+  color: #555555;
+}
+
+.mfr-resumen dd {
+  margin: 0;
+}
+
+/* ---- Listado de mis reservas ---- */
+
+.mfr-listado {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mfr-fila {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+}
+
+.mfr-fila-cancha {
+  font-weight: bold;
+  min-width: 14rem;
+}
+
+.mfr-fila-fecha,
+.mfr-fila-bloque {
+  color: #555555;
+}
+
+.mfr-fila-estado {
+  margin-left: auto;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  border: 1px solid #b8b8b8;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+}
+
+.mfr-listado-vacio {
+  margin: 0;
+  color: #555555;
+}
+
+/* ---- Paso de confirmacion de cancelacion (D-12) ---- */
+
+.mfr-confirmacion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: #fff8e6;
+  border: 1px solid #b07d00;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+}
+
+.mfr-confirmacion p {
+  margin: 0;
+}
+
+/* ---- Avisos ---- */
+
+.mfr-cargando {
+  margin: 0;
+  color: #555555;
 }
 
 .mfr-mensaje-error {
+  margin: 0;
   color: #a12020;
   background-color: #fdeaea;
   border: 1px solid #a12020;
@@ -46,9 +321,35 @@
 }
 
 .mfr-aviso-exito {
+  margin: 0;
   color: #1d6b32;
   background-color: #eaf7ee;
   border: 1px solid #1d6b32;
   border-radius: 4px;
   padding: 0.5rem 0.75rem;
+}
+
+/* ---- Hover: una sola regla para todos los botones del remote ---- */
+
+/* El hover se resolvia boton por boton y cada clase que faltaba se quedaba con
+   el "button:hover:enabled" del shell, que cambia el fondo a su verde oscuro y
+   no toca el color del texto: los botones de texto oscuro (los secundarios y
+   los de la navegacion inactiva) quedaban con texto oscuro sobre fondo oscuro e
+   ilegibles.
+
+   El criterio ahora vive en un solo sitio y no puede quedarse ningun boton
+   fuera: el hover cambia minimamente el fondo y el borde, y el texto conserva
+   siempre su color, que cada clase declara junto al suyo de reposo.
+
+   Especificidad (0,3,1), por encima del (0,2,1) del shell. Las clases declaran
+   sus variables con (0,1,0) o mas, asi que la variante activa de la navegacion
+   sobrescribe a la inactiva sin necesidad de otra regla de hover.
+
+   :enabled deja fuera los bloques ocupados y cualquier boton deshabilitado
+   mientras una peticion viaja: no son seleccionables y no reciben hover. */
+.mfr-modulo button:hover:enabled {
+  background-color: var(--mfr-fondo-hover);
+  color: var(--mfr-texto-hover);
+  border-color: var(--mfr-borde-hover);
+  box-shadow: var(--mfr-sombra-hover, none);
 }
