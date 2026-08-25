@@ -335,6 +335,66 @@ ya declaraba este remote, ya restringía la opción "Administracion" al rol `ADM
 las cuatro props desde la spec 06. Tampoco se tocó `mf-reservas`, pese a que `clienteApi.js` es
 casi idéntico en los dos: es la duplicación deliberada de D-04.
 
+## Spec 09 — mf-reportes (remote de Module Federation)
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 24/08/2026 | C1 | Generar requirements.md de `mf-reportes`, tercer y último remote del proyecto | Sí, tras responder diez preguntas | La IA se detuvo en diez datos faltantes y, **por tercera spec seguida, ninguno era de contrato**: las diez eran de presentación (cómo se organizan los tres reportes, cuándo se disparan las llamadas y con qué rango arranca el módulo, si el rango es uno o tres, qué hacer con el "por cancha y por deporte" que el PDF pide y el contrato no agrega, qué campo mide la demanda, qué pasa con los empates, qué pinta el remote ante un rol que no es ADMIN, qué lleva el `depends_on`, si se admite una barra de porcentaje y cómo se reparten las tareas). Dos observaciones que el C1 aportó sin que se le pidieran: que la cuarta viñeta del PDF §3.3.5 —"canchas con mayor y menor demanda"— **sí entra en esta spec**, porque P-08 de la spec 05 la delegó explícitamente al frontend "ordenando `items` en el cliente, sin endpoint nuevo"; y que P-02 no podía responderse sola, porque un rango por defecto al montar sería un valor inventado que el contrato no declara. Las respuestas quedaron como decisiones P-01 a P-10. Una corrección del responsable durante el C1 resultó ser un error de lectura sobre una copia del documento —§5 y §9 no estaban duplicadas—: se señaló en vez de borrar nada (`CLAUDE.md` §0.8) |
+| 2 | 24/08/2026 | C2 | Generar design.md con modelo de estado, payloads, rutas consumidas, códigos HTTP y decisiones | Sí, sin correcciones | La IA aportó por su cuenta **dos decisiones que ninguna instrucción pedía y que son el corazón del ciclo de consulta**: **D-06**, el contador `intento` dentro de `consulta`, sin el cual reintentar tras un `500` con el mismo rango no dispararía nada —`desde` y `hasta` no cambiaron, el efecto no vería ninguna diferencia y el botón parecería roto—; y **D-07**, que un error **no borre el reporte anterior**, con la etiqueta del período tomada de lo que **devolvió la respuesta** y no de lo escrito en los campos, para que conservar la tabla no pueda confundir dos rangos. También separó `rango` de `consulta` como dos estados distintos (D-05), que es lo que permite cumplir P-02 y P-03 a la vez: escribir fechas sin consultar no altera lo que está en pantalla. Verificación campo por campo contra el contrato: ningún nombre discrepa, con tres aclaraciones que parecen conflicto y no lo son —el `nombre` de cancha frente al de usuario, las filas de cancelaciones que **no** llevan `deporte`, y `desde`/`hasta` que son a la vez parámetro y campo de respuesta— |
+| 3 | 25/08/2026 | C3 | Ejecutar las seis tareas de tasks.md, una por una | Sí, con dos hallazgos | Seis tareas, exactamente el reparto que P-10 fijó: andamiaje, Compose, capa `api` con el esqueleto, y una por reporte. Antes de T1 el responsable corrigió el `tasks.md` para que los seis `docker compose logs` llevaran `--timestamps`, con la nota al inicio del archivo: la bitácora ya había registrado dos veces que sin la marca de tiempo el `compiled successfully` de la tarea anterior se lee como una compilación nueva. Dos hallazgos, detallados en la tabla siguiente |
+
+Tiempo invertido: ____
+
+**Hallazgos de la spec 09.** Dos, ninguno de contrato:
+
+| # | Hallazgo | Alcance | Dónde quedó resuelto |
+|---|---|---|---|
+| 1 | **El diseño tenía un hueco entre dos secciones que por separado eran correctas.** §8.1 pedía que el `SelectorRango` deshabilitara su botón "mientras se carga", pero §4.2 ponía `cargando` en el estado de cada pantalla, y el selector vive **por encima** de las pantallas, en `ReportesApp`: no había camino declarado entre los dos. Nadie lo nota leyendo cada sección por su lado; aparece al implementar | Diseño — hueco, detectado en T3 y resuelto antes de T4 | T3. La IA se detuvo, no improvisó el mecanismo y planteó las dos salidas (subir el estado, o bajarlo y avisar por callback). El responsable eligió **subir `cargando` a `ReportesApp`**, dueño ya de `vista`, `rango` y `consulta`, que son el ciclo completo de una consulta, y añadió la consecuencia que hacía falta escribir: cambiar de vista lo pone en `false` **en el mismo paso** que `consulta` en `null`, o el botón quedaría bloqueado por la carga de una pantalla ya desmontada. Quedó como **D-16** en el `design.md`, con §4.1, §4.2 y §8.1 corregidas |
+| 2 | **Una regla global del shell filtrándose al remote.** El selector de rango salía en columna y pegado a la derecha pese a que su clase declaraba `display: flex` y su `gap`. La causa estaba fuera del remote: el `estilos.css` del shell declara `form { display: flex; flex-direction: column }` y ese contenedor es un `<form>`. La clase ganaba en `display`, pero **no declaraba `flex-direction`**, así que esa propiedad la seguía poniendo el shell. `mf-reservas` no lo sufre por una diferencia de una etiqueta: su fila de filtros es un `div`. **El prefijo de clases protege contra colisiones de nombre, no contra selectores de elemento** | Entorno — CSS global en una arquitectura de microfrontends | **D-18** en el `design.md`, con `flex-direction: row` explícito, y anotado como hallazgo de entorno al final de esta bitácora, generalizado a `form`, `table`, `input`, `label` y `button`. Es el **cuarto caso** del proyecto, tras los tres del hallazgo 3 de la spec 08, y como aquellos **solo se ve en el navegador**: el CSS compila igual esté bien o mal |
+
+**Observación de cierre:** es la **segunda spec seguida sin ningún hallazgo que obligara a tocar
+el contrato ni un servicio cerrado**. `docs/contratos/README.md` no registra un solo cambio por
+esta spec, y `docker-compose.yml` volvió a ser el único archivo tocado fuera de la carpeta del
+remote, esta vez en T2. El molde de las specs 06 a 08 absorbió todo: el patrón de
+`webpack.config.js` y del servicio de Compose, la capa `src/api/` con su forma única de error, el
+envoltorio del `401` que llama `onLogout`, el prefijo de clases CSS con su regla única de hover, y
+la obligación de verificar en navegador toda tarea con interacción. Los dos hallazgos lo confirman
+desde el otro lado: ninguno es de contrato ni de negocio; uno es una costura entre dos secciones
+del propio diseño y el otro es CSS heredado del shell.
+
+Vale la pena anotar el patrón completo, para la defensa: en los tres remotes —nueve preguntas en
+la spec 07, diez en la 08 y diez en la 09— **ninguna de las veintinueve fue de contrato**. Cuando
+el contrato está congelado de verdad, lo que queda por decidir en un microfrontend no es qué datos
+hay, sino cómo se muestran. Y la única decisión de esta spec que roza el contrato —**D-17**, poner
+"Cancha" y "Cancelaciones" como encabezados en vez de `canchaId` y `totalCancelaciones`— lo hace
+para dejar escrito dónde termina: el contrato congela **nombres de campo del JSON**, que siguen
+intactos en el código, no el texto de un encabezado de tabla.
+
+**Estado de la spec 09.** Las seis tareas fueron ejecutadas y verificadas con salida real:
+`mf-reportes` corre en `http://localhost:3003` como servicio de `docker-compose.yml`, publica su
+`remoteEntry.js` con `200`, y los **tres** remotes conviven —`localhost:3001` y `localhost:3002`
+siguieron respondiendo `200` en cada verificación—. La capa `api/` se verificó con el criterio que
+la spec 08 dejó escrito, compilando los cinco archivos con `@babel/core` dentro del contenedor,
+porque en T3 ninguno estaba todavía en el grafo de módulos de webpack. Las tres rutas se probaron
+además con respuesta real por el proxy del propio remote: `ocupacion` y `reservas` devolvieron las
+cinco canchas con sus contadores —incluidas las que no tuvieron actividad, en `0`—, `cancelaciones`
+devolvió seis para "Padel 1", y un rango con `desde` posterior a `hasta` devolvió
+`{"codigo":"DATOS_INVALIDOS", ...}`, que la pantalla muestra tal cual. Con este remote queda
+cerrado el criterio de aceptación **4** del PDF §7 —el módulo de reportes muestra ocupación por
+cancha y reservas por período— y reforzado el **5**, ahora con tres remotes integrados. Los
+recorridos de navegador de cada tarea quedan a cargo del responsable.
+
+**Lo que esta spec dejó pendiente a propósito:** el **gateway Nginx** de la sección 5 de
+integración y la eliminación de los mapeos `8082`–`8085`; hasta entonces este remote resuelve
+`/api` con su propio `devServer.proxy`, que a diferencia de los otros dos declara **una sola
+entrada**, `/api/reportes`, porque es la única ruta base que consume (D-15). El shell no se tocó
+en ninguna tarea: ya declaraba este remote, ya creaba su `lazy` y ya restringía la opción
+"Reportes" al rol `ADMIN` desde la spec 06. Tampoco se tocaron los otros dos remotes ni ningún
+microservicio. Con `mf-reportes` cerrado, los cuatro módulos del PDF §3.2 —Seguridad, Reservas,
+Administración y Reportes— están implementados.
+
 ---
 
 **Hallazgos de entorno (aplican a todas las specs):**
