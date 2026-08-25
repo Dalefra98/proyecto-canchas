@@ -441,3 +441,37 @@ casi idéntico en los dos: es la duplicación deliberada de D-04.
   encadenados por `;` **los siguientes se ejecutan igual**, y es fácil leer el resultado como si
   todo hubiera corrido. En la T8 el `grep -rn 'Storage' src` posterior sí corrió y devolvió vacío;
   el que no llegó a ejecutarse fue solo el primero.
+- **El prefijo de clases protege contra colisiones de nombre, no contra reglas globales por
+  selector de elemento.** En la spec 09, el selector de rango de `mf-reportes` aparecía en
+  columna y pegado a la derecha, con un hueco grande a la izquierda, pese a que su clase
+  `.mfrep-rango` declaraba `display: flex` y su propio `gap`. La causa no estaba en el remote:
+  el `estilos.css` del **shell** declara `form { display: flex; flex-direction: column }`, y ese
+  contenedor es un `<form>`. La clase gana en `display` por especificidad, pero **no declaraba
+  `flex-direction`**, así que esa propiedad la seguía poniendo el shell; combinada con el
+  `align-items: flex-end` del remote, los tres controles salían apilados a la derecha.
+  `mf-reservas` no lo sufre por una diferencia de una etiqueta: su fila de filtros es un `div`
+  (`.mfr-filtros`), no un `form`. Se resolvió declarando `flex-direction: row` explícito, anotado
+  como **D-18** en el `design.md` de la spec 09.
+
+  Generalizado, que es lo que importa para el resto del proyecto: **en una arquitectura de
+  microfrontends el CSS sigue siendo global aunque el código esté federado**. Module Federation
+  aísla módulos de **JavaScript**, no hojas de estilo: cuando el shell monta un remote, los
+  estilos de los cuatro proyectos —shell y tres remotes— conviven en el mismo documento. El
+  prefijo (`mfr-`, `mfa-`, `mfrep-`) evita que dos clases con el mismo nombre se pisen, y para eso
+  funciona; pero **no evita nada** cuando el shell declara reglas sobre etiquetas HTML: `form`,
+  `table`, `input`, `label`, `button`. Un remote hereda todas ellas, y las hereda en silencio,
+  porque el síntoma no es un error sino un elemento que se ve distinto de lo que su propio CSS
+  dice. Es el cuarto caso del proyecto: los tres anteriores fueron el `button:hover:enabled` del
+  shell que dejaba ilegible el texto de los botones secundarios, el `label { margin-bottom: 4px }`
+  y el `input { margin-bottom: 14px }` que desalineaban los formularios de los remotes (hallazgo 3
+  de la spec 08). Los cuatro se detectaron **solo en el navegador**: el CSS compila igual esté
+  bien o mal, así que ningún registro de contenedor los muestra.
+
+  Consecuencia práctica para un remote nuevo: cuando un elemento no se comporta como dice su
+  clase, la primera sospecha es una regla del shell sobre esa etiqueta, no la propia clase; y toda
+  propiedad de disposición de la que dependa el diseño —`display`, `flex-direction`,
+  `align-items`, `margin`— conviene declararla explícita aunque parezca el valor por defecto,
+  porque el valor por defecto del remote puede no ser el que hay en la página. Material para la
+  sección de arquitectura del informe: **Module Federation aísla módulos de JavaScript, no hojas
+  de estilo**; el aislamiento real de CSS exigiría Shadow DOM, CSS Modules o clases generadas, y
+  ninguno está en el alcance de este proyecto (`CLAUDE.md` §3 pide CSS plano).

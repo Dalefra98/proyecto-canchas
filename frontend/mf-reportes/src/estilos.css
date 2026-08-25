@@ -37,10 +37,22 @@
 
 /* ---- Selector de rango (uno solo para los tres reportes, P-03) ---- */
 
+/* flex-direction: row es OBLIGATORIO aqui, no redundante: el shell declara
+   "form { display: flex; flex-direction: column }" y este contenedor es un
+   form. Sin esta linea la direccion la seguia poniendo el shell, y con
+   align-items: flex-end los tres controles quedaban en columna pegados a la
+   derecha, con un hueco grande a la izquierda.
+
+   mf-reservas no tiene este problema porque su fila de filtros es un div
+   (.mfr-filtros), no un form. Misma alineacion a la izquierda que aquella. */
 .mfrep-rango {
   display: flex;
+  flex-direction: row;
   gap: 0.75rem;
+  /* Con direccion row, flex-end alinea por la base: el boton queda a la altura
+     de los inputs y no centrado respecto a sus etiquetas. */
   align-items: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
 }
 

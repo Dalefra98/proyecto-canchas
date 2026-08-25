@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { ErrorApi } from "./api/clienteApi";
 import NavegacionInterna from "./components/NavegacionInterna";
+import PantallaCancelaciones from "./components/PantallaCancelaciones";
 import PantallaOcupacion from "./components/PantallaOcupacion";
 import PantallaReservas from "./components/PantallaReservas";
 import SelectorRango from "./components/SelectorRango";
@@ -140,9 +141,13 @@ function ReportesApp({ usuario, token, apiBaseUrl, onLogout }) {
         />
       ) : null}
       {vista === "cancelaciones" ? (
-        // La pantalla de Cancelaciones llega en T6. Hasta entonces esta vista no
-        // llama a ninguna ruta.
-        <p className="mfrep-vacio">Elija un rango de fechas y pulse Consultar.</p>
+        <PantallaCancelaciones
+          consulta={consulta}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+          onCargando={setCargando}
+        />
       ) : null}
     </section>
   );

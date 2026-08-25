@@ -87,14 +87,18 @@ function PantallaOcupacion({ consulta, apiBaseUrl, token, ejecutar, onCargando }
               />
 
               <table className="mfrep-tabla">
+                {/* D-17: etiquetas legibles. El contrato congela los NOMBRES DE
+                    CAMPO del JSON, que siguen intactos abajo (item.canchaId,
+                    item.porcentajeOcupacion...), no el texto de un encabezado de
+                    tabla. */}
                 <thead>
                   <tr>
-                    <th scope="col">canchaId</th>
-                    <th scope="col">nombre</th>
-                    <th scope="col">deporte</th>
-                    <th scope="col">horasReservadas</th>
-                    <th scope="col">horasDisponibles</th>
-                    <th scope="col">porcentajeOcupacion</th>
+                    <th scope="col">Cancha</th>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Deporte</th>
+                    <th scope="col">Horas reservadas</th>
+                    <th scope="col">Horas disponibles</th>
+                    <th scope="col">Ocupacion (%)</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { obtenerReservas } from "../api/reportesApi";
-import IndicadorDemanda from "./IndicadorDemanda";
+import { obtenerCancelaciones } from "../api/reportesApi";
 import MensajeError from "./MensajeError";
 
-// HU-03: numero de reservas por cancha y por deporte en el rango consultado.
-// Solo lectura: pide su ruta y pinta lo que llega.
+// HU-04: numero de cancelaciones por cancha en el rango consultado. Solo
+// lectura: pide su ruta y pinta lo que llega.
+//
+// P-05: esta pantalla NO lleva indicador de mayor y menor demanda. La cancha con
+// mas cancelaciones no es la de mayor demanda, asi que IndicadorDemanda no se
+// importa aqui.
 //
 // Seccion 4.2: guarda reporte y error. El cargando NO es suyo: vive en
 // ReportesApp y se enciende y apaga con el onCargando recibido (D-16).
-function PantallaReservas({ consulta, apiBaseUrl, token, ejecutar, onCargando }) {
+function PantallaCancelaciones({ consulta, apiBaseUrl, token, ejecutar, onCargando }) {
   const [reporte, setReporte] = useState(null);
   const [error, setError] = useState(null);
 
@@ -24,10 +27,10 @@ function PantallaReservas({ consulta, apiBaseUrl, token, ejecutar, onCargando })
     // termine ultima pintaria, aunque sea la de un rango que ya cambio.
     let vigente = true;
 
-    async function consultarReservas() {
+    async function consultarCancelaciones() {
       onCargando(true);
       const resultado = await ejecutar(() =>
-        obtenerReservas(apiBaseUrl, token, consulta.desde, consulta.hasta)
+        obtenerCancelaciones(apiBaseUrl, token, consulta.desde, consulta.hasta)
       );
 
       if (!vigente) {
@@ -50,7 +53,7 @@ function PantallaReservas({ consulta, apiBaseUrl, token, ejecutar, onCargando })
       }
     }
 
-    consultarReservas();
+    consultarCancelaciones();
 
     return () => {
       vigente = false;
@@ -59,7 +62,7 @@ function PantallaReservas({ consulta, apiBaseUrl, token, ejecutar, onCargando })
 
   return (
     <section className="mfrep-pantalla">
-      <h3>Reservas por periodo</h3>
+      <h3>Cancelaciones por periodo</h3>
       <MensajeError error={error} />
 
       {reporte === null ? (
@@ -78,12 +81,6 @@ function PantallaReservas({ consulta, apiBaseUrl, token, ejecutar, onCargando })
             </p>
           ) : (
             <>
-              <IndicadorDemanda
-                items={reporte.items}
-                campo="totalReservas"
-                etiqueta="reservas"
-              />
-
               <table className="mfrep-tabla">
                 {/* D-17: etiquetas legibles; los nombres de campo del JSON
                     siguen intactos abajo. */}
@@ -91,30 +88,28 @@ function PantallaReservas({ consulta, apiBaseUrl, token, ejecutar, onCargando })
                   <tr>
                     <th scope="col">Cancha</th>
                     <th scope="col">Nombre</th>
-                    <th scope="col">Deporte</th>
-                    <th scope="col">Reservas</th>
+                    <th scope="col">Cancelaciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* P-04: la columna deporte por fila es lo que satisface el "por
-                      cancha y por deporte" del PDF. No hay total agrupado por
-                      deporte: seria un numero que la API no devolvio. */}
+                  {/* Sin columna deporte: las filas de este reporte no lo traen y
+                      el remote no lo completa desde otra llamada (HU-04). */}
                   {reporte.items.map((item) => (
                     <tr key={item.canchaId}>
                       <td>{item.canchaId}</td>
                       <td>{item.nombre}</td>
-                      <td>{item.deporte}</td>
-                      <td className="mfrep-numero">{item.totalReservas}</td>
+                      <td className="mfrep-numero">{item.totalCancelaciones}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              {/* HU-03: sin esta nota, el numero se lee como "todas las reservas
-                  registradas". RN-08 es la que separa los tres reportes. */}
+              {/* HU-04: sin esta nota, el rango se lee como "cancelaciones hechas
+                  en estas fechas". reservas_db no almacena la fecha de
+                  cancelacion. */}
               <p className="mfrep-nota">
-                totalReservas cuenta las reservas CONFIRMADA y FINALIZADA, y
-                excluye las CANCELADA, que tienen su propio reporte.
+                El rango filtra por la fecha de la reserva cancelada, no por la
+                fecha en que se cancelo.
               </p>
             </>
           )}
@@ -124,4 +119,4 @@ function PantallaReservas({ consulta, apiBaseUrl, token, ejecutar, onCargando })
   );
 }
 
-export default PantallaReservas;
+export default PantallaCancelaciones;
