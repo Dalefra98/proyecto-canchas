@@ -4,6 +4,7 @@ import { ErrorApi } from "./api/clienteApi";
 import MensajeError from "./components/MensajeError";
 import NavegacionInterna from "./components/NavegacionInterna";
 import PantallaDisponibilidad from "./components/PantallaDisponibilidad";
+import PantallaNuevaReserva from "./components/PantallaNuevaReserva";
 import "./estilos.css";
 
 // Modulo expuesto como "./ReservasApp" (contrato congelado). Recibe las cuatro
@@ -17,11 +18,13 @@ function ReservasApp({ usuario, token, apiBaseUrl, onLogout }) {
   const [canchas, setCanchas] = useState([]);
   const [errorCatalogo, setErrorCatalogo] = useState(null);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
-  // §4.1 declara los seis campos de estado aqui. reservaPendiente se declara en
-  // T3 y todavia no tiene quien lo escriba: nace en T5, cuando la grilla de T4
-  // permita elegir un bloque libre (D-10). No es un olvido.
   const [reservaPendiente, setReservaPendiente] = useState(null);
   const [avisoExito, setAvisoExito] = useState(null);
+  // Campo agregado a §4.1 en T5: la cancha y la fecha consultadas y un contador
+  // de reconsulta. Sobrevive al ida y vuelta a la pantalla de nueva reserva, que
+  // desmonta PantallaDisponibilidad y se llevaria su estado. Nace en null y no
+  // sale ni una llamada hasta que el usuario pulse Consultar (D-18).
+  const [consultaGrilla, setConsultaGrilla] = useState(null);
 
   // D-13: unico punto del remote que decide que hacer con un 401. Todas las
   // rutas de este remote son autenticadas (§6.1), asi que un 401 solo puede
@@ -86,6 +89,63 @@ function ReservasApp({ usuario, token, apiBaseUrl, onLogout }) {
     setAvisoExito(null);
   }
 
+  // Unico camino por el que se consulta la grilla: el boton de la pantalla no
+  // llama a la API por su cuenta, pide una consulta aqui (D-18). El contador
+  // crece siempre, para que consultar dos veces la misma cancha y la misma fecha
+  // se distinga de no haber consultado nada.
+  function solicitarConsulta(canchaId, fecha) {
+    setConsultaGrilla((anterior) => ({
+      canchaId: canchaId,
+      fecha: fecha,
+      refresco: anterior === null ? 1 : anterior.refresco + 1
+    }));
+  }
+
+  // Reconsulta con los mismos canchaId y fecha: solo cambia el contador.
+  function refrescarGrilla() {
+    setConsultaGrilla((anterior) =>
+      anterior === null ? null : { ...anterior, refresco: anterior.refresco + 1 }
+    );
+  }
+
+  // D-10: elegir un bloque libre es el unico camino a la pantalla de nueva
+  // reserva (P-01). La cancha y la fecha salen de la respuesta de
+  // disponibilidad, no del selector.
+  function elegirBloque(seleccion) {
+    setReservaPendiente(seleccion);
+    setAvisoExito(null);
+    setVista("nuevaReserva");
+  }
+
+  // Volver sin crear nada: se descarta la seleccion y la grilla se reconsulta al
+  // montarse con la misma cancha y fecha (HU-02).
+  function volverAGrilla() {
+    setReservaPendiente(null);
+    setVista("disponibilidad");
+  }
+
+  // D-11: tras el 201 se vuelve a la grilla y se la reconsulta, de modo que el
+  // bloque recien reservado aparezca ocupado sin que nadie toque nada. Es la
+  // prueba visible de RN-02 en la demo. El aviso lleva los datos devueltos.
+  function reservaCreada(reserva) {
+    setAvisoExito(
+      "Reserva " +
+        reserva.id +
+        " creada: " +
+        reserva.fecha +
+        " de " +
+        reserva.horaInicio +
+        " a " +
+        reserva.horaFin +
+        " (" +
+        reserva.estado +
+        ")."
+    );
+    refrescarGrilla();
+    setReservaPendiente(null);
+    setVista("disponibilidad");
+  }
+
   return (
     <section className="mfr-modulo">
       <h2>Reservas</h2>
@@ -97,9 +157,7 @@ function ReservasApp({ usuario, token, apiBaseUrl, onLogout }) {
       {errorCatalogo ? <MensajeError error={errorCatalogo} /> : null}
 
       {/* La pantalla se monta tambien mientras el catalogo carga: sus selectores
-          quedan deshabilitados hasta que llegue (§4.2). onElegirBloque no se pasa
-          todavia: elegir un bloque libre escribe reservaPendiente y cambia de
-          vista, y eso lo conecta T5 (D-10). */}
+          quedan deshabilitados hasta que llegue (§4.2). */}
       {vista === "disponibilidad" ? (
         <PantallaDisponibilidad
           canchas={canchas}
@@ -107,6 +165,9 @@ function ReservasApp({ usuario, token, apiBaseUrl, onLogout }) {
           apiBaseUrl={apiBaseUrl}
           token={token}
           ejecutar={ejecutar}
+          consultaGrilla={consultaGrilla}
+          onSolicitarConsulta={solicitarConsulta}
+          onElegirBloque={elegirBloque}
         />
       ) : null}
 
@@ -118,10 +179,20 @@ function ReservasApp({ usuario, token, apiBaseUrl, onLogout }) {
         </div>
       ) : null}
 
+      {/* Invariante de §4.1: a esta vista solo se llega con reservaPendiente. */}
       {vista === "nuevaReserva" && reservaPendiente !== null ? (
-        <div>
-          <h3>Nueva reserva</h3>
-        </div>
+        <PantallaNuevaReserva
+          reservaPendiente={reservaPendiente}
+          cancha={canchas.find(
+            (cancha) => String(cancha.canchaId) === String(reservaPendiente.canchaId)
+          )}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+          onCreada={reservaCreada}
+          onVolver={volverAGrilla}
+          onRefrescarGrilla={refrescarGrilla}
+        />
       ) : null}
     </section>
   );

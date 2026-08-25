@@ -237,6 +237,25 @@ documenta con el mismo rigor que un DDL para que el diseño sea verificable.
 | `reservaPendiente.horaInicio` | string | — | formato `HH:mm`, minutos `00` | bloque elegido |
 | `reservaPendiente.horaFin` | string | — | formato `HH:mm`; solo se **muestra** | bloque elegido |
 | `avisoExito` | string o `null` | `null` | mensaje propio del remote tras un `201` o un `200` de cancelacion | HU-02, HU-05 |
+| `consultaGrilla` | objeto o `null` | `null` | `null` mientras no se haya consultado nada; una vez consultado, sobrevive al ida y vuelta a la pantalla de nueva reserva | boton de consultar (D-18) y D-11 |
+| `consultaGrilla.canchaId` | number | — | la cancha efectivamente consultada | seleccion del usuario |
+| `consultaGrilla.fecha` | string | — | formato `AAAA-MM-DD` | seleccion del usuario |
+| `consultaGrilla.refresco` | number | — | contador que solo crece; cada incremento pide reconsultar **los mismos** `canchaId` y `fecha` | D-11 |
+
+`consultaGrilla` se agrego el 24/08/2026, al implementar T5, porque el modelo original no
+alcanzaba: HU-02 pide volver a la grilla "con la misma cancha y fecha consultadas" y D-11 pide
+reconsultarla tras el `201`, pero §4.2 pone `canchaIdElegida`, `fecha` y `disponibilidad` dentro
+de `PantallaDisponibilidad`, que se desmonta al pasar a `vista = "nuevaReserva"` (§6.3), y
+`reservaPendiente` —el unico otro sitio donde viven esa cancha y esa fecha— se descarta
+justo en ese momento por el invariante de abajo. Sin un campo que sobreviva al ida y vuelta, la
+grilla volvia vacia y con la fecha reiniciada a hoy.
+
+Es el cambio mas chico que cumple las dos: §4.2 queda intacta, porque los campos de la pantalla
+siguen siendo suyos y `consultaGrilla` solo fija sus valores iniciales y dispara la consulta. El
+`refresco` es un contador y no un booleano para que dos reconsultas seguidas de la misma cancha y
+fecha —dos `409 BLOQUE_OCUPADO` sobre el mismo bloque, por ejemplo— se distingan una de otra. El
+`null` inicial es lo que mantiene D-18: al montar el remote la grilla esta vacia y no sale ni una
+llamada hasta que el usuario pulse Consultar.
 
 Invariantes:
 
@@ -463,12 +482,21 @@ codigo; aqui va de **codigo recibido a comportamiento**, porque el remote es el 
 | Token vencido o invalido | 401 | `NO_AUTENTICADO` | invoca `onLogout()`; no pinta pantalla de sesion (D-13) |
 | Sin permiso | 403 | `SIN_PERMISO` | muestra `mensaje`; no deberia ocurrir con reservas propias |
 | Cancha inexistente o inactiva, reserva inexistente | 404 | `NO_ENCONTRADO` | muestra `mensaje` y refresca la vista afectada |
-| Bloque ya reservado o bajo mantenimiento | 409 | `BLOQUE_OCUPADO` | muestra `mensaje`, vuelve a la grilla y la reconsulta |
+| Bloque ya reservado o bajo mantenimiento | 409 | `BLOQUE_OCUPADO` | muestra `mensaje` en la pantalla de nueva reserva y marca la grilla para reconsulta; el usuario vuelve con "Volver a la grilla", que ya la trae reconsultada y con el bloque ocupado |
 | Limite de reservas activas alcanzado | 409 | `LIMITE_RESERVAS` | muestra `mensaje`; no deshabilita nada por adelantado (RN-06) |
 | Reserva ya ocurrida | 409 | `RESERVA_PASADA` | muestra `mensaje` y recarga el listado |
 | Reserva que ya no esta `CONFIRMADA` | 409 | `RESERVA_NO_CANCELABLE` | muestra `mensaje` y recarga el listado |
 | Fallo de `ms-canchas` visto por `ms-reservas`, o error no previsto | 500 | `ERROR_INTERNO` | muestra `mensaje` y ofrece reintentar; **no** reintenta solo (D-14) |
 | Proxy sin destino, microservicio caido o red cortada | sin respuesta o 502/504 | `ERROR_INTERNO` sintetizado | muestra "No se pudo contactar al servicio" y ofrece reintentar |
+
+La fila del `409 BLOQUE_OCUPADO` se corrigio el 24/08/2026, al implementar T5. Decia "muestra
+`mensaje`, vuelve a la grilla y la reconsulta", y las dos cosas no caben juntas: el mensaje se
+pinta en la pantalla que hizo la llamada, asi que volver de inmediato lo haria desaparecer antes
+de que el usuario alcance a leerlo, y no hay ningun campo del modelo (§4.1) por el que ese
+mensaje viaje hasta la grilla. El aviso se queda donde el usuario esta mirando y la reconsulta se
+adelanta con el contador `consultaGrilla.refresco`, de modo que el retorno —a un clic, con el
+boton de "Volver a la grilla" que P-01 ya exige— muestra el bloque ya ocupado. Lo que HU-02 pide
+se cumple igual: se ve el `mensaje` y se refresca la grilla.
 
 El `401` es el unico codigo con un efecto global: cierra la sesion del sistema entero llamando
 `onLogout()`. Todos los demas son locales a la pantalla que hizo la llamada.

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { consultarDisponibilidad } from "../api/reservasApi";
 import GrillaBloques from "./GrillaBloques";
 import MensajeError from "./MensajeError";
@@ -26,11 +26,19 @@ function PantallaDisponibilidad({
   apiBaseUrl,
   token,
   ejecutar,
+  consultaGrilla,
+  onSolicitarConsulta,
   onElegirBloque
 }) {
   const [deporteFiltro, setDeporteFiltro] = useState("TODOS");
-  const [canchaIdElegida, setCanchaIdElegida] = useState("");
-  const [fecha, setFecha] = useState(fechaDeHoy);
+  // Los selectores abren con la consulta que sobrevivio al ida y vuelta a la
+  // pantalla de nueva reserva, y con hoy la primera vez (D-09).
+  const [canchaIdElegida, setCanchaIdElegida] = useState(() =>
+    consultaGrilla === null ? "" : String(consultaGrilla.canchaId)
+  );
+  const [fecha, setFecha] = useState(() =>
+    consultaGrilla === null ? fechaDeHoy() : consultaGrilla.fecha
+  );
   const [disponibilidad, setDisponibilidad] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
@@ -58,24 +66,59 @@ function PantallaDisponibilidad({
   // D-19: no se validan formatos. Lo unico que se comprueba es que la seleccion
   // este completa, para no gastar una llamada inutil (§5.1). La fecha pasada se
   // consulta con normalidad: es legitimo (P-02).
-  async function consultar() {
+  function consultar() {
     if (canchaIdElegida === "" || fecha === "") {
       return;
     }
-
-    setCargando(true);
-    setError(null);
-
-    const resultado = await ejecutar(() =>
-      consultarDisponibilidad(apiBaseUrl, token, canchaIdElegida, fecha)
-    );
-
-    setCargando(false);
-    setError(resultado.error);
-    if (resultado.datos !== null) {
-      setDisponibilidad(resultado.datos);
-    }
+    onSolicitarConsulta(canchaIdElegida, fecha);
   }
+
+  // La llamada sale de un solo sitio: este efecto. El boton no llama a la API,
+  // solicita la consulta a ReservasApp, que escribe consultaGrilla; el efecto la
+  // atiende. Asi la reconsulta tras el 201 (D-11) y la consulta manual recorren
+  // exactamente el mismo camino.
+  //
+  // Depende de canchaId, fecha y refresco: un cambio solo del contador dispara
+  // la consulta con los mismos parametros, que es justo lo que D-11 necesita.
+  const canchaConsultada = consultaGrilla === null ? null : consultaGrilla.canchaId;
+  const fechaConsultada = consultaGrilla === null ? null : consultaGrilla.fecha;
+  const refrescoConsultado = consultaGrilla === null ? null : consultaGrilla.refresco;
+
+  useEffect(() => {
+    // null: todavia no se consulto nada y la grilla esta vacia (D-18).
+    if (canchaConsultada === null) {
+      return undefined;
+    }
+
+    let vigente = true;
+
+    async function consultarDisponibilidadDeLaGrilla() {
+      setCargando(true);
+      setError(null);
+
+      const resultado = await ejecutar(() =>
+        consultarDisponibilidad(apiBaseUrl, token, canchaConsultada, fechaConsultada)
+      );
+
+      if (!vigente) {
+        return;
+      }
+
+      setCargando(false);
+      setError(resultado.error);
+      if (resultado.datos !== null) {
+        setDisponibilidad(resultado.datos);
+      }
+    }
+
+    consultarDisponibilidadDeLaGrilla();
+
+    // La pantalla se puede desmontar mientras la peticion viaja: el usuario
+    // elige un bloque y pasa a nueva reserva.
+    return () => {
+      vigente = false;
+    };
+  }, [canchaConsultada, fechaConsultada, refrescoConsultado]);
 
   return (
     <div className="mfr-pantalla">
@@ -142,7 +185,16 @@ function PantallaDisponibilidad({
           // HU-04: si el catalogo fallo o la cancha no esta en el, se muestra el
           // canchaId de la respuesta tal cual, sin inventar un nombre.
           nombreCancha={canchaElegida ? canchaElegida.nombre : "Cancha " + disponibilidad.canchaId}
-          onElegirBloque={onElegirBloque}
+          // D-10: la cancha y la fecha salen de la respuesta, no del selector:
+          // son las que se consultaron de verdad.
+          onElegirBloque={(bloque) =>
+            onElegirBloque({
+              canchaId: disponibilidad.canchaId,
+              fecha: disponibilidad.fecha,
+              horaInicio: bloque.horaInicio,
+              horaFin: bloque.horaFin
+            })
+          }
         />
       ) : null}
     </div>

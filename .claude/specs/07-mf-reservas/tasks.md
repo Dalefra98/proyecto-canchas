@@ -268,6 +268,11 @@ exactamente los del contrato (`canchaId`, `nombre`, `deporte`, `horaApertura`, `
 cuerpo de `POST /api/reservas` siga siendo de tres campos y que las cuatro props se lean tal como
 llegan. Sin cambios de comportamiento.
 
+Detalle detectado al verificar T4 (24/08/2026), a corregir aqui y no antes: en `GrillaBloques`
+las dos lineas de cada boton salen pegadas ("08:00–09:00Libre"). Falta el separador entre el
+rango horario y el estado: `.mfr-bloque` necesita su reparto vertical (los dos `span` ya existen
+como `.mfr-bloque-horas` y `.mfr-bloque-estado`). Es estilo, no comportamiento.
+
 **Cubre.** E-12; §1, §10 y §11 del diseño; cierre de HU-01 a HU-09.
 
 **Verificacion.**
