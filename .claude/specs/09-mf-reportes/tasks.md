@@ -12,6 +12,17 @@ esperar aprobación. No encadenar tareas.
 Todos los comandos se ejecutan desde la raíz del repositorio, en PowerShell. Nada de `npm`,
 `node` ni `npx` en el host: solo Docker (`CLAUDE.md` §1).
 
+## Cómo se lee el registro en esta spec
+
+**Siempre con `--timestamps`.** `webpack serve` compila de forma continua y su registro no se
+limpia entre tareas: sin la marca de tiempo, el `compiled successfully` de la tarea anterior se
+lee como una compilación nueva. La bitácora ya registró ese engaño dos veces —T3 de la spec 06 y
+el hallazgo 2 de la spec 08—. Antes de leer el resultado hay que comprobar que la marca sea
+**posterior** al último guardado.
+
+No hay `mvn clean package`: la compilación la hace `webpack serve` **dentro del contenedor**, de
+forma continua, y la prueba de que compiló es su propio registro.
+
 ---
 
 ## T1 — Andamiaje del remote y guardia de rol
@@ -55,7 +66,7 @@ con `condition: service_started` (P-08). Declara `mf_reportes_node_modules` en l
 
 ```powershell
 docker compose up -d --build mf-reportes
-docker compose logs --tail=50 mf-reportes
+docker compose logs --timestamps --tail=50 mf-reportes
 curl.exe -I http://localhost:3003/remoteEntry.js
 curl.exe -I http://localhost:3001/remoteEntry.js
 curl.exe -I http://localhost:3002/remoteEntry.js
@@ -86,7 +97,7 @@ error; D-03 a D-08, D-12.
 
 ```powershell
 docker compose restart mf-reportes
-docker compose logs --tail=50 mf-reportes
+docker compose logs --timestamps --tail=50 mf-reportes
 curl.exe -I http://localhost:3003/remoteEntry.js
 ```
 
@@ -113,7 +124,7 @@ empate y el reporte vacío; HU-09 en su parte de `500` sin reporte parcial.
 
 ```powershell
 docker compose restart mf-reportes
-docker compose logs --tail=50 mf-reportes
+docker compose logs --timestamps --tail=50 mf-reportes
 ```
 
 En el navegador, con un `ADMIN` y al menos una reserva creada desde `mf-reservas` dentro del
@@ -140,7 +151,7 @@ de trazabilidad.
 
 ```powershell
 docker compose restart mf-reportes
-docker compose logs --tail=50 mf-reportes
+docker compose logs --timestamps --tail=50 mf-reportes
 ```
 
 En el navegador, con un `ADMIN`: cambiar a Reservas conserva el rango y **no** dispara la consulta
@@ -166,7 +177,7 @@ las tres rutas.
 
 ```powershell
 docker compose restart mf-reportes
-docker compose logs --tail=50 mf-reportes
+docker compose logs --timestamps --tail=50 mf-reportes
 curl.exe -I http://localhost:3001/remoteEntry.js
 curl.exe -I http://localhost:3002/remoteEntry.js
 curl.exe -I http://localhost:3003/remoteEntry.js
@@ -186,7 +197,7 @@ Vale para las seis (§10 del diseño):
 |---|---|
 | 1 | `curl.exe http://localhost:3003/remoteEntry.js` responde `200` |
 | 2 | `curl.exe http://localhost:3001/remoteEntry.js` y `curl.exe http://localhost:3002/remoteEntry.js` siguen respondiendo `200` |
-| 3 | `docker compose logs --tail=50 mf-reportes` sin errores de compilación |
+| 3 | `docker compose logs --timestamps --tail=50 mf-reportes` sin errores de compilación |
 | 4 | Recorrido por navegador con un `ADMIN` sobre la pantalla de la tarea |
 | 5 | Consola del navegador sin errores de React duplicado ni de `hooks` inválidos |
 

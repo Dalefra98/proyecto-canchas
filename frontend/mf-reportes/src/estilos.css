@@ -1,0 +1,31 @@
+/* Unico archivo de estilos del remote, importado desde ReportesApp.jsx y no
+   desde bootstrap.jsx: el shell monta el modulo expuesto directamente y nunca
+   ejecuta el bootstrap del remote, asi que importarlo alli dejaria el remote sin
+   estilos en su unico caso real de uso.
+
+   Todas las clases llevan el prefijo mfrep- (D-14): el CSS del shell, el de
+   mf-reservas (mfr-), el de mf-administracion (mfa-) y el de este remote
+   conviven en la misma pagina y son globales, asi que una clase con el mismo
+   nombre en dos proyectos se pisaria segun el orden de carga. No se reusa mfr-,
+   que ya es de mf-reservas.
+
+   CSS plano, sin librerias de UI ni de graficos (CLAUDE.md seccion 3). */
+
+/* ---- Contenedor del modulo ---- */
+
+.mfrep-modulo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Aviso de la guardia de rol (P-07): el modulo no se monta y esto es lo unico
+   que se pinta. */
+.mfrep-aviso {
+  margin: 0;
+  color: #7a5200;
+  background-color: #fff8e6;
+  border: 1px solid #b07d00;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
