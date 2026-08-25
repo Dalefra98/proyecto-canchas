@@ -395,6 +395,76 @@ en ninguna tarea: ya declaraba este remote, ya creaba su `lazy` y ya restringía
 microservicio. Con `mf-reportes` cerrado, los cuatro módulos del PDF §3.2 —Seguridad, Reservas,
 Administración y Reportes— están implementados.
 
+## Spec 10 — Gateway Nginx (sección 5 de integración)
+
+Responsable: DAVID ARISTEGA
+
+| N.º | Fecha | Compuerta | Intención del prompt | ¿Se aceptó? | Corrección aplicada |
+|---|---|---|---|---|---|
+| 1 | 24/08/2026 | Análisis previo | Antes de pedir nada, cinco preguntas de análisis sobre el gateway: qué hacen hoy los dos `.conf` que nadie usó, cuál es el alcance mínimo del PDF §4.2, qué se rompe si el gateway entra, si debe servir también los estáticos, y si esto es una spec con tres compuertas o un trabajo corto | Sí, sin escribir código | El análisis descubrió lo que ningún documento decía: **eliminar los mapeos `8082`–`8085`, como el proyecto venía anunciando desde la spec 01, dejaría sin acceso a Swagger UI —el entregable E3—**, porque la documentación OpenAPI vive en `/swagger-ui/index.html`, fuera de `/api`, y un gateway que solo enruta `/api` no la alcanza. Con ellos caía además toda la verificación por `curl.exe` de las specs 03 a 05 y de la bitácora. Ese hallazgo **cambió la decisión de alcance antes de que existiera un requisito**: los mapeos se conservan. También quedó claro que los dos `.conf` de `infra/nginx/` describían un despliegue con `npm run build` y estáticos servidos por Nginx que el proyecto **descartó en P-06 y P-07 de la spec 06**, y que solo la mitad `/api` de `shell.conf` seguía siendo válida |
+| 2 | 25/08/2026 | C1 | Generar requirements.md del gateway con cinco decisiones de alcance ya tomadas (opción A, conservar `8082`–`8085`, Swagger por puertos directos, adminer y postgres fuera, limpiar `infra/nginx`) | Sí, tras responder cuatro preguntas | La IA se detuvo en cuatro datos que las cinco decisiones no cubrían y que **bloquearon la compuerta**: qué responde el gateway cuando un microservicio no contesta —un `502` de Nginx no está en el contrato congelado—, si el gateway publica puerto en el host (funcionalmente no lo necesita), qué `context` declara cada `devServer.proxy` ahora que el `target` es único, y si `shell.conf` conserva un nombre que ya no describe nada. Las cuatro se respondieron como **D-6 a D-9**. El C1 se llevó además la anulación por escrito de la nota "se elimina cuando exista el gateway Nginx" que el repositorio arrastraba en cuatro lugares del compose y cinco `requirements.md` desde la spec 02, con el criterio de **no reescribir los documentos históricos**: la anulación vive en la spec que la decide (§8). Una corrección de la propia IA durante el C1: el documento decía "22 rutas congeladas" y el contrato tiene **20** |
+| 3 | 25/08/2026 | C2 | Generar design.md con las cinco tablas adaptadas a un entregable que no tiene base de datos, ni DTOs, ni endpoints propios | Sí, sin correcciones | La IA aportó por su cuenta **DD-01, que evitaba un fallo silencioso**: la imagen `nginx:alpine` trae su propio `default.conf` con un `server` que ya escucha en el puerto 80, así que montar `gateway.conf` como un archivo más de `conf.d/` habría dejado **dos `server` en la misma escucha sin `server_name`**; ganaría el primero por orden alfabético —`default.conf`— y los cuatro `location /api` no se usarían nunca. El gateway habría arrancado bien y `nginx -t` habría pasado: el error solo se vería al llegar la primera petición. El diseño lo monta **en la ruta de `default.conf`**, reemplazándolo. Las otras dos decisiones que sostienen el resultado son **DD-02** —`proxy_pass` sin barra final, o el microservicio recibiría `/{canchaId}` en vez de `/api/canchas/{canchaId}`— y **DD-05**, que **descarta** `resolver` + `set`: se prefiere que Nginx **no arranque** si falta un microservicio, fallo ruidoso prevenido con `depends_on`, antes que arrancar siempre y fallar en caliente. Verificación contra el contrato: el gateway no deserializa ningún cuerpo, así que no hay superficie donde un nombre pueda desviarse; lo que se verificó ruta por ruta fue que las **20** caen en un prefijo y solo en uno |
+| 4 | 25/08/2026 | C3 | Ejecutar las siete tareas de tasks.md, una por una | Sí, con dos hallazgos | Siete tareas ordenadas con un criterio que ninguna spec anterior necesitó: **el gateway entra en paralelo antes de que nadie lo use**. T1 y T2 lo crean y lo levantan sin que la aplicación lo toque, T3 y T4 trasladan los consumidores uno a uno, y T5 a T7 retiran lo que quedó sin uso. Cada tarea deja el sistema funcionando de extremo a extremo, que era la condición para poder detenerse en cualquier punto. Dos hallazgos, detallados en la tabla siguiente |
+
+Tiempo invertido: ____
+
+**Hallazgos de la spec 10.** Dos, ninguno de contrato:
+
+| # | Hallazgo | Alcance | Dónde quedó resuelto |
+|---|---|---|---|
+| 1 | **El puerto `8080` estaba ocupado por un contenedor de otro proyecto del mismo equipo, y el síntoma señalaba al lugar equivocado.** La petición al gateway devolvía un `404` **con formato de Spring Boot**, que parecía un `404` del propio gateway o un `proxy_pass` mal escrito. Costó cuatro comandos de diagnóstico descubrir que la respuesta no venía del gateway en absoluto, sino de una aplicación ajena al proyecto escuchando en el mismo puerto | Entorno — el puerto más disputado de una máquina de desarrollo | **DD-13** en el `design.md` y corrección fechada de **D-7**: el puerto publicado pasa de `8080:80` a `8090:80`. El proyecto no debe depender de que `8080` esté libre en la máquina de quien lo despliegue. Quedó además la tabla **§11 del `requirements.md`** con los once puertos que el sistema necesita libres, separando los cuatro que la aplicación usa de verdad (`3000`–`3003`) de los siete de servicio |
+| 2 | **Una entrada residual en un `devServer.proxy`, invisible hasta que se migraron los `target`.** `mf-administracion` declaraba **cuatro** `context` incluyendo `/api/reportes`, un microservicio que ese remote **no consume** (P-08 de la spec 08). Nunca se usó y nunca dio error: solo se ve cuando alguien recorre los cuatro archivos comparándolos con lo que cada uno declara | Configuración — acoplamiento declarado que no existe | T4. La IA se detuvo al ver que el archivo real y el `design.md` no coincidían, y planteó las dos salidas en vez de elegir. El responsable eligió **eliminar la entrada**, con el criterio de que corregir el documento para que describiera la entrada residual sería *documentar un error en vez de arreglarlo*, y con la precisión que hacía falta escribir: la entrada era **anterior al gateway y nunca usada, no un permiso que el gateway venga a quitar**. Quedó como **DD-14** y como corrección fechada de **D-8**, que pasa a leerse "cada microfrontend conserva los prefijos que **realmente consume**". Es el mismo criterio de **D-15 de la spec 09** |
+
+**Observación de cierre:** es la **única spec del proyecto que no tocó ni una línea de `src/` ni
+de `backend/`**. Cambió solo infraestructura: un archivo de configuración de Nginx, el
+`docker-compose.yml` y el `devServer.proxy` de cuatro `webpack.config.js`. Que eso fuera posible
+no es casualidad ni suerte: es el cobro de una decisión tomada **dos specs antes**. P-02 de la
+spec 06 aplazó el gateway con un motivo escrito —"las rutas relativas `/api` funcionan igual en
+los dos modos, así que pasar al gateway no obliga a tocar código de aplicación"— y con una fecha
+de revisión. La regla de `CLAUDE.md` §3 de que **toda llamada HTTP usa rutas relativas bajo
+`/api`** es lo que hizo que introducir un punto de entrada único fuera un cambio de una línea por
+archivo en vez de una migración.
+
+El mismo razonamiento explica por qué `502` y `504` no obligaron a tocar ninguna capa `src/api/`:
+las cuatro tratan como fallo genérico todo código que no esté en el contrato, así que un error de
+transporte entra por un camino que ya existía.
+
+Y una distinción que la spec dejó escrita y conviene defender: **el gateway no es un
+microservicio y no habla el formato de error del contrato**. `500 ERROR_INTERNO` significa "un
+microservicio falló procesando la petición"; `502` significa "el microservicio no está". Son dos
+cosas distintas y el diseño quiere que se vean distintas (D-6, DD-09). Traducir el `502` a
+`{"codigo": "ERROR_INTERNO"}` habría disfrazado un fallo de infraestructura de error de negocio y
+habría sumado una fila al contrato congelado por un caso que no es de negocio.
+
+**Estado de la spec 10.** Las siete tareas fueron ejecutadas y verificadas con salida real. El
+gateway corre como servicio `gateway` de `docker-compose.yml`, con `infra/nginx/gateway.conf`
+montado de solo lectura sobre `default.conf` y publicado en `8090:80`. Los cuatro prefijos
+enrutan (`200` en `/api/usuarios`, `/api/canchas`, `/api/reservas` y `/api/reportes/...` con token
+de `ADMIN`), la respuesta por el gateway es **byte a byte idéntica** a la del puerto directo
+—`diff` sin diferencias entre `:8090/api/canchas` y `:8083/api/canchas`—, y todo lo que no es
+`/api/<dominio>` responde `404`: `/`, `/index.html`, `/remoteEntry.js`, `/api` y `/api/pagos`. El
+`502` se probó parando `ms-reportes`: devolvió HTML de Nginx —no el JSON del contrato—,
+`/api/canchas` siguió respondiendo `200` y el gateway no se cayó. El orden de arranque se probó
+con `down` + `up -d` completo y se leyó de `StartedAt`: postgres → los cuatro microservicios →
+gateway → los cuatro microfrontends, aunque estos ya no nombren a ningún microservicio. Swagger UI
+responde `200` en `8082`–`8085` y `404` por el gateway, que es exactamente lo que D-3 decidió.
+`infra/nginx/` quedó con **un solo archivo**. Con esto queda cubierto el **API Gateway del PDF
+§4.2** en su alcance mínimo, y reforzado el criterio de aceptación **5**: los cuatro
+microfrontends siguen funcionando y ninguno conoce ya la dirección de un microservicio.
+
+**Lo que esta spec dejó pendiente a propósito:** los estáticos del shell y de los tres remotes
+**no** pasan por el gateway (opción A, D-1). El navegador sigue entrando por `localhost:3000` y
+descargando cada `remoteEntry.js` de `localhost:3001`–`3003`, así que siguen existiendo cuatro
+orígenes de navegador y el `Access-Control-Allow-Origin` de los tres remotes sigue haciendo falta.
+La opción B —gateway como origen único, sirviendo también los estáticos— se evaluó y se descartó
+con motivo escrito: rompe el HMR de los cuatro microfrontends, cuyos `client.webSocketURL` están
+fijados a `ws://localhost:300X/ws`, obliga a reescribir el `publicPath` de los tres remotes y las
+tres URLs de remote del shell, y mete Nginx delante de `webpack serve` en modo desarrollo a días
+de la entrega. Tampoco se implementó ninguna función de gateway más allá del enrutado —TLS,
+validación de JWT en el borde, límites de tasa, caché, balanceo, reintentos o agregación de
+respuestas—: el PDF §4.2 pide un gateway **simple**. Los mapeos `8082`–`8085` se conservan
+**para siempre**, con el motivo escrito en el comentario de cada uno.
+
 ---
 
 **Hallazgos de entorno (aplican a todas las specs):**
@@ -535,3 +605,13 @@ Administración y Reportes— están implementados.
   sección de arquitectura del informe: **Module Federation aísla módulos de JavaScript, no hojas
   de estilo**; el aislamiento real de CSS exigiría Shadow DOM, CSS Modules o clases generadas, y
   ninguno está en el alcance de este proyecto (`CLAUDE.md` §3 pide CSS plano).
+
+- El contenedor `gateway` imprime en **cada arranque** esta línea, y no es un error:
+  `10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf
+  (read-only file system?)`. Es el propio entrypoint de la imagen `nginx:alpine` intentando
+  añadir `listen [::]:80;` al archivo de configuración, que está montado con `:ro` porque el
+  gateway nunca debe reescribir su propia configuración (spec 10, §8.1). El aviso viene marcado
+  como `info`, no como `error`, y **Nginx acaba escuchando igual en IPv4 e IPv6**:
+  `docker compose ps` muestra `0.0.0.0:8090->80/tcp, [::]:8090->80/tcp`. Conviene saberlo antes
+  de una demo: aparece justo después de `docker compose up -d`, mezclado con las líneas de
+  arranque de los diez servicios, y quien lo vea por primera vez pensará que algo falló.
