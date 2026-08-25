@@ -7,6 +7,7 @@ import {
 } from "../api/canchasApi";
 import FormularioCancha from "./FormularioCancha";
 import MensajeError from "./MensajeError";
+import PanelBloqueos from "./PanelBloqueos";
 
 // HU-01 a HU-04. Estado de la seccion 4.2 del diseño.
 //
@@ -32,6 +33,9 @@ function PantallaCanchas({ apiBaseUrl, token, ejecutar }) {
   const [canchaIdEnCambio, setCanchaIdEnCambio] = useState(null);
   const [errorAccion, setErrorAccion] = useState(null);
   const [aviso, setAviso] = useState(null);
+  // P-01: canchaId cuyos bloqueos se muestran; null = panel cerrado. El panel
+  // vive dentro de esta pantalla, no es una vista aparte.
+  const [canchaSeleccionada, setCanchaSeleccionada] = useState(null);
 
   // HU-01: al ADMIN la ruta le devuelve todas las canchas, incluidas las
   // activa = false. El remote no filtra nada ni reordena.
@@ -169,6 +173,10 @@ function PantallaCanchas({ apiBaseUrl, token, ejecutar }) {
     cargarCanchas();
   }
 
+  // El panel recibe la cancha del listado ya cargado: su nombre y su deporte
+  // salen de ahi, no de una llamada aparte.
+  const canchaDeBloqueos = canchas.find((cancha) => cancha.canchaId === canchaSeleccionada);
+
   return (
     <section className="mfa-pantalla">
       <h3>Canchas</h3>
@@ -233,11 +241,27 @@ function PantallaCanchas({ apiBaseUrl, token, ejecutar }) {
                   >
                     {cancha.activa ? "Inactivar" : "Activar"}
                   </button>
+                  <button type="button" onClick={() => setCanchaSeleccionada(cancha.canchaId)}>
+                    Bloqueos
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      ) : null}
+
+      {/* P-01: los bloqueos se pintan dentro de esta misma pantalla, bajo el
+          listado, para la cancha elegida. Cerrarlos no cambia de vista. Si la
+          cancha desaparece del catalogo tras una recarga, el panel no se pinta. */}
+      {canchaSeleccionada !== null && canchaDeBloqueos !== undefined ? (
+        <PanelBloqueos
+          cancha={canchaDeBloqueos}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+          onCerrar={() => setCanchaSeleccionada(null)}
+        />
       ) : null}
     </section>
   );
