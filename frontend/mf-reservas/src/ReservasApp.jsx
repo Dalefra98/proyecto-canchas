@@ -3,6 +3,7 @@ import { listarCanchas } from "./api/canchasApi";
 import { ErrorApi } from "./api/clienteApi";
 import MensajeError from "./components/MensajeError";
 import NavegacionInterna from "./components/NavegacionInterna";
+import PantallaDisponibilidad from "./components/PantallaDisponibilidad";
 import "./estilos.css";
 
 // Modulo expuesto como "./ReservasApp" (contrato congelado). Recibe las cuatro
@@ -95,24 +96,21 @@ function ReservasApp({ usuario, token, apiBaseUrl, onLogout }) {
       {avisoExito ? <p className="mfr-aviso-exito">{avisoExito}</p> : null}
       {errorCatalogo ? <MensajeError error={errorCatalogo} /> : null}
 
-      {/* Marcadores de posicion de T3: muestran el catalogo ya cargado para
-          probar que la carga real del remote funciona. T4 sustituye la vista de
-          disponibilidad, T5 la de nueva reserva y T6 la de mis reservas. */}
-      {cargandoCatalogo ? <p>Cargando catalogo de canchas...</p> : null}
-
-      {!cargandoCatalogo && vista === "disponibilidad" ? (
-        <div>
-          <h3>Disponibilidad</h3>
-          <ul>
-            {canchas.map((cancha) => (
-              <li key={cancha.canchaId}>
-                {cancha.nombre} — {cancha.deporte} ({cancha.horaApertura}–{cancha.horaCierre})
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* La pantalla se monta tambien mientras el catalogo carga: sus selectores
+          quedan deshabilitados hasta que llegue (§4.2). onElegirBloque no se pasa
+          todavia: elegir un bloque libre escribe reservaPendiente y cambia de
+          vista, y eso lo conecta T5 (D-10). */}
+      {vista === "disponibilidad" ? (
+        <PantallaDisponibilidad
+          canchas={canchas}
+          cargandoCatalogo={cargandoCatalogo}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+        />
       ) : null}
 
+      {/* Marcador de posicion de T3, que T6 sustituye por PantallaMisReservas. */}
       {!cargandoCatalogo && vista === "misReservas" ? (
         <div>
           <h3>Mis reservas</h3>
