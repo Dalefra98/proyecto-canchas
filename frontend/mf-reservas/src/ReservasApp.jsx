@@ -4,6 +4,7 @@ import { ErrorApi } from "./api/clienteApi";
 import MensajeError from "./components/MensajeError";
 import NavegacionInterna from "./components/NavegacionInterna";
 import PantallaDisponibilidad from "./components/PantallaDisponibilidad";
+import PantallaMisReservas from "./components/PantallaMisReservas";
 import PantallaNuevaReserva from "./components/PantallaNuevaReserva";
 import "./estilos.css";
 
@@ -171,12 +172,17 @@ function ReservasApp({ usuario, token, apiBaseUrl, onLogout }) {
         />
       ) : null}
 
-      {/* Marcador de posicion de T3, que T6 sustituye por PantallaMisReservas. */}
-      {!cargandoCatalogo && vista === "misReservas" ? (
-        <div>
-          <h3>Mis reservas</h3>
-          <p>{canchas.length} canchas en el catalogo compartido.</p>
-        </div>
+      {/* Se monta aunque el catalogo siga cargando o haya fallado: un fallo del
+          catalogo no oculta las reservas, solo deja el canchaId en lugar del
+          nombre (HU-04). */}
+      {vista === "misReservas" ? (
+        <PantallaMisReservas
+          canchas={canchas}
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          ejecutar={ejecutar}
+          onAviso={setAvisoExito}
+        />
       ) : null}
 
       {/* Invariante de §4.1: a esta vista solo se llega con reservaPendiente. */}
