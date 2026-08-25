@@ -301,3 +301,20 @@ token vencido puede llegarle; la estrenan los remotes al recibir un `401` y llam
   spec 07 necesita para que el navegador deje al shell (`localhost:3000`) descargar el remote
   (`localhost:3001`). Detectado en la T1 de la spec 07: es ruido inofensivo, no un defecto, y no
   hay que perseguirlo en las verificaciones de los tres remotes.
+- **Tercer caso: el criterio de verificación era insuficiente, otra vez.** En la T2 de la spec 07
+  se creó la capa `api/` (`clienteApi.js`, `canchasApi.js`, `reservasApi.js`) y
+  `MensajeError.jsx`, y el criterio escrito era el `compiled successfully` del registro. No prueba
+  nada: **webpack solo compila lo que alcanza desde el `entry`**, y en T2 ningún archivo importa
+  todavía esos cuatro. Quedaban fuera del grafo de módulos, así que el registro habría dicho
+  `compiled successfully` aunque tuvieran errores de sintaxis. Se reemplazó por la compilación
+  explícita dentro del contenedor con el mismo `.babelrc` que usa `babel-loader`:
+  `docker compose exec mf-reservas node -e "...babel.transformFileSync(a)..."` sobre los cuatro
+  archivos (con `@babel/core` y no `@babel/cli`, que no está entre las doce dependencias). Es el
+  **tercer caso del proyecto** en que el criterio de verificación resulta insuficiente, y los tres
+  tienen el mismo patrón: *en el frontend, verificar por log solo prueba lo que webpack alcanza
+  desde el `entry`*. Los otros dos: el watcher sin `poll` (T3 de la spec 06), donde el log repetía
+  una compilación que nunca ocurrió; y el `SyntheticEvent` de `cerrarSesion` (T5 de la spec 06),
+  que compiló limpio cuatro tareas seguidas y solo apareció en el navegador. El primero es el log
+  mintiendo sobre *cuándo* compiló, el segundo sobre *qué significa* haber compilado, y este
+  tercero sobre *qué* se compiló. De ahí la regla de leer siempre el registro con
+  `--timestamps`, anotada al inicio del `tasks.md` de la spec 07.

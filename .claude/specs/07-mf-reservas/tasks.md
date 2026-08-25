@@ -13,11 +13,18 @@ Se usa `curl.exe`, no `curl`.
 
 ## Como se verifica un microfrontend en esta spec
 
+**Siempre con `--timestamps`.** `webpack serve` compila de forma continua y su registro no se
+limpia entre tareas: sin la marca de tiempo, el `compiled successfully` de la tarea anterior se
+lee como una compilacion nueva. La bitacora ya registro ese engaño con el watcher sin sondeo
+(T3 de la spec 06), donde el registro repetia la compilacion vieja mientras el archivo en disco
+ya era otro. Todo `docker compose logs` de esta spec lleva `--timestamps`, y antes de leer el
+resultado hay que comprobar que la marca sea **posterior** al ultimo guardado.
+
 No hay `mvn clean package`: la compilacion la hace `webpack serve` **dentro del contenedor**, de
 forma continua, y la prueba de que compilo es su propio registro:
 
 ```powershell
-docker compose logs --tail=30 mf-reservas
+docker compose logs --timestamps --tail=30 mf-reservas
 ```
 
 `compiled successfully` significa que compilo; `ERROR in ...` dice el archivo y la linea. El
@@ -71,7 +78,7 @@ HU-08; decisiones D-01, D-02, D-03. Ninguna RN: el remote no implementa reglas d
 
 ```powershell
 docker compose up -d mf-reservas
-docker compose logs --tail=40 mf-reservas
+docker compose logs --timestamps --tail=40 mf-reservas
 curl.exe -i http://localhost:3001/remoteEntry.js
 curl.exe -i http://localhost:3001
 ```
@@ -98,13 +105,24 @@ declaradas en un solo lugar).
 
 **Verificacion.**
 
+El `compiled successfully` del registro **no sirve como criterio de esta tarea**: en T2 ningun
+archivo importa todavia `clienteApi`, `canchasApi`, `reservasApi` ni `MensajeError`, y webpack
+solo compila lo que alcanza desde el `entry`. Los cuatro archivos quedan fuera del grafo de
+modulos, asi que el registro diria `compiled successfully` aunque tuvieran errores de sintaxis.
+Lo que se verifica aqui es que **esos cuatro archivos** compilan, pasandolos por Babel de forma
+explicita dentro del contenedor, con el mismo `.babelrc` que usa `babel-loader`:
+
 ```powershell
-docker compose logs --tail=30 mf-reservas
+docker compose exec mf-reservas node -e "const babel=require('@babel/core');const archivos=['src/api/clienteApi.js','src/api/canchasApi.js','src/api/reservasApi.js','src/components/MensajeError.jsx'];for(const a of archivos){babel.transformFileSync(a);console.log('OK '+a);}"
 ```
 
-Debe decir `compiled successfully`, sin `ERROR in`. Todavia ninguna pantalla llama a estos
-modulos: el criterio de esta tarea es que el proyecto siga compilando con la capa nueva dentro,
-igual que la T2 de la spec 06.
+Se usa `@babel/core` directamente y no un `npx @babel/cli` porque `@babel/cli` **no** esta entre
+las doce dependencias de §3.4 y esta tarea no agrega ninguna.
+
+Debe imprimir las cuatro lineas `OK` y salir sin error; un fallo de sintaxis sale como excepcion
+de Babel con el archivo y la linea. Esto prueba sintaxis y transformacion de JSX, no
+comportamiento: la primera prueba real de que la capa `api/` funciona es la llamada a
+`GET /api/canchas` de T3, y el paso de navegador que la acompaña.
 
 ## T3 — HU-06 y HU-07: modulo expuesto, catalogo y primera carga real dentro del shell
 
@@ -123,7 +141,7 @@ su P-04); HU-04 en su mitad de catalogo; decisiones D-06, D-07, D-13, D-15.
 **Verificacion.**
 
 ```powershell
-docker compose logs --tail=30 mf-reservas
+docker compose logs --timestamps --tail=30 mf-reservas
 curl.exe -i http://localhost:3001/remoteEntry.js
 ```
 
@@ -157,7 +175,7 @@ decisiones D-08, D-09, D-18, D-19.
 **Verificacion.**
 
 ```powershell
-docker compose logs --tail=30 mf-reservas
+docker compose logs --timestamps --tail=30 mf-reservas
 ```
 
 En el navegador, como `USUARIO` en el modulo Reservas:
@@ -189,7 +207,7 @@ D-10, D-11, D-14.
 **Verificacion.**
 
 ```powershell
-docker compose logs --tail=30 mf-reservas
+docker compose logs --timestamps --tail=30 mf-reservas
 ```
 
 En el navegador, como `USUARIO`:
@@ -223,7 +241,7 @@ presentacion; decision D-12.
 **Verificacion.**
 
 ```powershell
-docker compose logs --tail=30 mf-reservas
+docker compose logs --timestamps --tail=30 mf-reservas
 ```
 
 En el navegador, como `USUARIO`:
@@ -255,7 +273,7 @@ llegan. Sin cambios de comportamiento.
 **Verificacion.**
 
 ```powershell
-docker compose logs --tail=30 mf-reservas
+docker compose logs --timestamps --tail=30 mf-reservas
 docker compose ps
 curl.exe -i http://localhost:3001/remoteEntry.js
 ```

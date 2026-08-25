@@ -1,0 +1,54 @@
+/* Unico archivo de estilos del remote, importado desde ReservasApp.jsx y no
+   desde bootstrap.jsx (D-15): el shell monta el modulo expuesto directamente y
+   nunca ejecuta el bootstrap del remote, asi que importarlo alli dejaria el
+   remote sin estilos en su unico caso real de uso.
+
+   Todas las clases llevan el prefijo mfr- (D-16): el CSS del shell y el del
+   remote conviven en la misma pagina y son globales.
+
+   En T3 este archivo esta al minimo: T7 lo completa con la grilla, el
+   formulario y el listado. */
+
+.mfr-modulo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mfr-navegacion {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid #d0d0d0;
+  padding-bottom: 0.5rem;
+}
+
+.mfr-navegacion-opcion {
+  background: none;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.mfr-navegacion-opcion.mfr-activa {
+  background-color: #1f4e79;
+  border-color: #1f4e79;
+  color: #ffffff;
+}
+
+.mfr-mensaje-error {
+  color: #a12020;
+  background-color: #fdeaea;
+  border: 1px solid #a12020;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.mfr-aviso-exito {
+  color: #1d6b32;
+  background-color: #eaf7ee;
+  border: 1px solid #1d6b32;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
