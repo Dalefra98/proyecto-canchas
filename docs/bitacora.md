@@ -615,3 +615,74 @@ respuestas—: el PDF §4.2 pide un gateway **simple**. Los mapeos `8082`–`808
   `docker compose ps` muestra `0.0.0.0:8090->80/tcp, [::]:8090->80/tcp`. Conviene saberlo antes
   de una demo: aparece justo después de `docker compose up -d`, mezclado con las líneas de
   arranque de los diez servicios, y quien lo vea por primera vez pensará que algo falló.
+
+- **Zona horaria de los contenedores: `LocalDateTime.now()` corría cinco horas adelantado.** Al
+  usar la aplicación en horario real —13:47 de un día laborable, hora de Ecuador— reservar el
+  bloque de las 14:00 **de ese mismo día** respondía `400 DATOS_INVALIDOS`, «No se puede reservar
+  un bloque que ya ocurrió», sobre un bloque que todavía era futuro. La causa no estaba en las
+  reglas de negocio sino en el entorno: ningún servicio del `docker-compose.yml` declaraba `TZ`,
+  así que los contenedores corrían en **UTC** y la JVM tomaba UTC como zona por defecto. Con el
+  host en las 19:58 del 27/08, `docker compose exec ms-reservas date` devolvía
+  `Fri Aug 28 00:58 UTC`: el desfase no era solo de cinco horas, **también de fecha**, porque a
+  partir de las 19:00 locales el contenedor ya estaba en el día siguiente. La zona por defecto de
+  la JVM se lee sin instrumentar nada en el sufijo de los registros de Spring: decían
+  `2026-08-28T00:57:27.208Z`, y tras la corrección dicen `2026-08-27T20:06:12.004-05:00`.
+
+  Lo que obligó a mirar más allá del síntoma es que la comparación contra el reloj **no está en un
+  solo sitio**: son cinco, y arreglar una sola habría dejado el sistema incoherente —una reserva
+  que se puede crear pero no cancelar, o que se lee `FINALIZADA` mientras sigue siendo cancelable—.
+  `ReservaService:76` (RN-04 en el alta), `ReservaService:169` (RN-04 en la cancelación),
+  `ReservaService:106` (RN-06, que pasa `LocalDate.now()` y `LocalTime.now()` como parámetros de
+  `contarActivas`), `ReservaMapper:55` (el `FINALIZADA` derivado al leer, que no se persiste) y
+  `BloqueoService:66` de **ms-canchas** (P-02.c, no bloquear fechas pasadas). Fuera de la lista
+  quedaron dos que parecían candidatos y no lo eran: **ms-reportes** no consulta el reloj en
+  ningún punto —el rango llega en `desde` y `hasta` y se compara contra la `fecha` de cada reserva,
+  todo `LocalDate` sin zona—, y `DisponibilidadService` tampoco. Los reportes sí heredaban el
+  problema, pero **de forma indirecta**, a través del `estado` que les sirve ms-reservas.
+
+  La corrección es de entorno, no de código: `TZ: America/Guayaquil` en los cinco servicios que
+  tienen un reloj propio (`postgres`, `ms-usuarios`, `ms-canchas`, `ms-reservas`, `ms-reportes`).
+  Los cuatro microfrontends **no lo llevan a propósito**: el navegador usa la zona del sistema
+  operativo del usuario, y fijársela por contenedor no cambiaría nada. Se descartó tocar el Java
+  ya cerrado y verificado —inyectar un `Clock`, o cambiar los cinco `now()` por
+  `LocalDateTime.now(ZONA)`— porque el desfase era del entorno y no de las reglas: una variable
+  corrige los cinco puntos de una vez, y cualquier comparación que se añada mañana nace correcta
+  sin que nadie recuerde la convención. Detalle de implementación que sí hubo que comprobar antes
+  de aplicarlo, porque de haber fallado la solución habría sido otra: `TZ` solo funciona si la
+  imagen trae la base de datos de zonas. Las imágenes del proyecto son **Alpine**, que a menudo la
+  omite, pero tanto `eclipse-temurin:21-jre-alpine` como `postgres:16-alpine` traen
+  `/usr/share/zoneinfo` poblado, así que no hizo falta instalar `tzdata` ni reconstruir imagen
+  alguna: basta recrear los contenedores.
+
+  **Por qué apareció tan tarde, que es la lección que vale para el resto del proyecto.** Todas las
+  verificaciones anteriores —specs 03 a 05 y las de esta misma bitácora— reservan en **fechas
+  futuras**, de mañana en adelante. Sobre una fecha futura, cinco horas de desfase no cambian
+  ningún resultado: el bloque sigue siendo futuro esté el reloj en UTC o en UTC-5, así que las
+  pruebas pasaban limpias y seguirían pasando hoy. El error solo se manifiesta en la **franja de
+  hoy**, y dentro de ella solo en las horas que ya pasaron localmente pero aún no en UTC —y, a
+  partir de las 19:00, en el día entero—. Generalizado: **una prueba con fechas futuras no ejercita
+  la comparación contra el reloj**, solo comprueba que el orden de dos fechas lejanas es el
+  esperado. Para que una regla de tipo «no operar sobre el pasado» quede cubierta de verdad hace
+  falta al menos un caso *en el día en curso*, uno a cada lado del instante actual. Los cinco
+  puntos citados arriba estaban implementados correctamente desde el principio; lo que faltaba era
+  una prueba capaz de notar que el reloj de referencia no era el que la aplicación creía.
+
+  Regresión verificada tras el cambio, porque toca cuatro servicios ya terminados: `date` coincide
+  con el host en fecha y hora en los cinco contenedores; el bloque de la hora siguiente de hoy
+  devuelve `201`; un bloque ya pasado de hoy sigue devolviendo `400`; cancelar una reserva pasada
+  sigue devolviendo `409 RESERVA_PASADA`; el conteo de RN-06 sigue contando solo las futuras (la
+  tercera reserva activa entra con `201` y la cuarta se rechaza con `409 LIMITE_RESERVAS`, con una
+  `CONFIRMADA` de ayer presente que no cuenta); una reserva de ayer se lee `FINALIZADA`; y los tres
+  reportes sobre un rango pasado devuelven una respuesta **idéntica carácter a carácter** a la
+  capturada antes de aplicar la corrección.
+
+  Queda anotado un punto que **no** afecta a la aplicación pero conviene conocer: el motor de
+  Postgres sigue respondiendo `SHOW timezone` = `UTC`, porque `initdb` fijó la zona en
+  `postgresql.conf` la primera vez que se creó el volumen `pgdata` y ese archivo no se regenera
+  al recrear el contenedor. Es inocuo hoy —la tabla `reserva` usa `DATE` y `TIME` sin zona, no hay
+  ningún `DEFAULT now()` ni columna `timestamptz`, y la única consulta que compara contra el reloj,
+  `contarActivas`, recibe la fecha y la hora **como parámetros calculados en la JVM**—, pero
+  significa que un `SELECT ... WHERE fecha > CURRENT_DATE` escrito a mano en `psql` o en Adminer
+  sigue evaluándose en UTC y puede contradecir a la aplicación durante las últimas cinco horas del
+  día. Ocurrió mientras se verificaba este mismo cambio: una consulta de comprobación etiquetó como
+  «pasada» una reserva de hoy a las 21:00 que la aplicación contaba, con razón, como activa.

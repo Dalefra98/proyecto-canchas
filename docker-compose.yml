@@ -6,6 +6,16 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
+      # Zona horaria del contenedor (America/Guayaquil, UTC-5). Sin esta variable el
+      # contenedor corre en UTC y la JVM toma UTC como zona por defecto, asi que
+      # LocalDateTime.now() adelanta cinco horas: RN-04 rechazaba como pasado un bloque
+      # de hoy aun futuro, y despues de las 19:00 locales hasta la FECHA cambiaba de dia.
+      # Se corrige aqui y no en el codigo Java porque el desfase es del entorno, no de las
+      # reglas: las cinco comparaciones contra el reloj -RN-04 alta, RN-04 cancelacion,
+      # RN-06 conteo de activas, FINALIZADA derivada al leer y P-02.c de ms-canchas- quedan
+      # correctas de una vez. Las imagenes alpine de temurin y de postgres ya traen tzdata,
+      # asi que TZ resuelve el identificador sin instalar nada.
+      TZ: America/Guayaquil
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -32,6 +42,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: usuarios_pass
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: ${JWT_SECRET}
+      # Misma zona horaria que el resto de servicios (UTC-5); ver el comentario en postgres.
+      TZ: America/Guayaquil
     ports:
       # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
       # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
@@ -51,6 +63,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: canchas_pass
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: ${JWT_SECRET}
+      # Misma zona horaria que el resto de servicios (UTC-5); ver el comentario en postgres.
+      TZ: America/Guayaquil
     ports:
       # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
       # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
@@ -73,6 +87,8 @@ services:
       # Nombre de contenedor: la llamada a ms-canchas es servidor a servidor.
       MS_CANCHAS_URL: http://ms-canchas:8080
       RESERVAS_MAX_ACTIVAS: ${RESERVAS_MAX_ACTIVAS}
+      # Misma zona horaria que el resto de servicios (UTC-5); ver el comentario en postgres.
+      TZ: America/Guayaquil
     ports:
       # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
       # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
@@ -94,6 +110,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       MS_CANCHAS_URL: http://ms-canchas:8080
       MS_RESERVAS_URL: http://ms-reservas:8080
+      # Misma zona horaria que el resto de servicios (UTC-5); ver el comentario en postgres.
+      TZ: America/Guayaquil
     ports:
       # Puerto de servicio, se conserva a proposito (spec 10, D-2): Swagger UI vive fuera
       # de /api y el gateway no lo enruta, y toda la verificacion por curl.exe de las
