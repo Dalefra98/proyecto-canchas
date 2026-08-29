@@ -244,6 +244,9 @@ CLAUDE.md           Reglas del proyecto: stack, convenciones y flujo de trabajo
 - [`docs/contratos/README.md`](docs/contratos/README.md) — **contratos congelados**: campos, rutas
   REST, payloads, formato de error y contrato de Module Federation. Es la fuente única de verdad de
   la integración.
+- [`docs/contratos/canchas-postman-collection.json`](docs/contratos/canchas-postman-collection.json)
+  — **colección de Postman** con las peticiones de la API; se importa desde Postman con
+  *Import > File*.
 - [`docs/bitacora.md`](docs/bitacora.md) — bitácora: qué se pidió en cada compuerta de cada spec,
   qué se corrigió y qué hallazgos aparecieron.
 - [`.claude/specs/`](.claude/specs/) — una carpeta por funcionalidad, con `requirements.md`,
