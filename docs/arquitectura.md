@@ -49,7 +49,97 @@ capas definen la estructura interna dentro de cada límite.
 
 ---
 
-## 3. Patrones descartados deliberadamente
+## 3. Manejo de errores de punta a punta
+
+Un error no se controla en un solo sitio: cada capa decide una cosa distinta y ninguna
+invade a la siguiente.
+
+| Capa | Archivo | Qué decide |
+|---|---|---|
+| Servicio | `backend/ms-reservas/src/main/java/ec/ups/dae/reservas/service/ReservaService.java` | **Qué regla se violó.** Lanza `BloqueOcupadoException` (RN-02), `LimiteReservasException` (RN-06), `ReservaPasadaException` (RN-04) o `ReservaAjenaException` (RN-03). No conoce códigos HTTP |
+| Excepciones de negocio | `backend/ms-reservas/src/main/java/ec/ups/dae/reservas/exception/` | Una clase por regla violada, con el mensaje que verá el usuario |
+| `@RestControllerAdvice` | `backend/ms-reservas/src/main/java/ec/ups/dae/reservas/exception/ManejadorExcepciones.java` (uno por microservicio) | **Qué código HTTP y qué `codigo` del contrato.** Es el único lugar donde se construye el cuerpo `{ codigo, mensaje }` |
+| Cadena de seguridad | `backend/ms-reservas/src/main/java/ec/ups/dae/reservas/config/SeguridadConfig.java` | **El `401` y el `403` de autenticación**, que se producen antes del controlador y por eso no pasan por el advice |
+| Cliente HTTP saliente | `backend/ms-reportes/src/main/java/ec/ups/dae/reportes/client/CanchasClient.java` y `backend/ms-reservas/src/main/java/ec/ups/dae/reservas/service/CanchasClient.java` | **Qué hacer con el error de otro microservicio:** envolverlo, nunca reenviar su código |
+| Capa de API del frontend | `frontend/mf-reservas/src/api/clienteApi.js` (y su equivalente en shell, `mf-administracion` y `mf-reportes`) | **Qué forma tiene el error en el navegador.** Normaliza a `{ codigo, mensaje }` incluso cuando la respuesta no trae cuerpo |
+| App del microfrontend | `frontend/mf-reservas/src/ReservasApp.jsx` | **Qué hacer con el error**, en particular con el `401` |
+| Componente de presentación | `frontend/mf-reportes/src/components/MensajeError.jsx` (uno por microfrontend) | **Cómo se ve.** Pinta `error.mensaje` tal cual, sin traducir el código |
+| Fallo de carga del remote | `frontend/shell/src/components/BordeError.jsx` | El error que **no** es HTTP: el módulo federado que no descarga o revienta al renderizar |
+
+### 3.1 Backend
+
+`ManejadorExcepciones` traduce, en un solo archivo por microservicio:
+
+| Excepción | Respuesta |
+|---|---|
+| `MethodArgumentNotValidException`, `HttpMessageNotReadableException`, `MethodArgumentTypeMismatchException`, `MissingServletRequestParameterException`, `FormatoInvalidoException`, `BloqueInvalidoException`, `FechaPasadaException` | `400 DATOS_INVALIDOS` |
+| `ReservaAjenaException` (RN-03) | `403 SIN_PERMISO` |
+| `ReservaNoEncontradaException`, `CanchaNoEncontradaException`, `NoResourceFoundException` | `404 NO_ENCONTRADO` |
+| `BloqueOcupadoException` / `LimiteReservasException` / `ReservaPasadaException` / `ReservaNoCancelableException` | `409` con `BLOQUE_OCUPADO`, `LIMITE_RESERVAS`, `RESERVA_PASADA`, `RESERVA_NO_CANCELABLE` |
+| `DataIntegrityViolationException` | `409 BLOQUE_OCUPADO` si el detalle nombra `ux_reserva_bloque_confirmada`; cualquier otra violación, `500 ERROR_INTERNO` |
+| `CatalogoNoDisponibleException` | `500 ERROR_INTERNO` con mensaje fijo; el detalle real queda en el log |
+| `Exception` (red de seguridad) | `500 ERROR_INTERNO` con mensaje fijo |
+
+Tres detalles que suelen buscarse en el sitio equivocado:
+
+- **`401` y `403` no están en el advice.** Los escribe la cadena de filtros:
+  `authenticationEntryPoint` produce `401 NO_AUTENTICADO` y `accessDeniedHandler` produce
+  `403 SIN_PERMISO`, ambos con el mismo `ErrorResponse` del contrato. Están en
+  `SeguridadConfig.java`, no en `ManejadorExcepciones.java`.
+- **La carrera de RN-02 la arbitra la base.** Dos altas simultáneas pasan la comprobación
+  previa del servicio; la segunda viola el índice único parcial y `DataIntegrityViolationException`
+  se traduce al mismo `409 BLOQUE_OCUPADO`, no a un `500`. Es la doble barrera de la spec 04, §9 D-03.
+- **`NoResourceFoundException` tiene manejador propio.** Sin él, una ruta inexistente caería
+  en la red de seguridad y saldría como `500` en vez de `404`.
+
+El error de un microservicio ajeno **nunca se reenvía**: el cliente HTTP envuelve todo fallo
+—5xx, `401`, `403`, timeout, conexión rechazada— en `CatalogoNoDisponibleException`, que sale
+como `500 ERROR_INTERNO`. Un `401` recibido de `ms-canchas` significa que nuestro token de
+servicio está mal firmado o vencido: es defecto de configuración propio, no error del cliente
+final (spec 04, §9 D-08).
+
+El gateway no participa: no traduce el `502` al contrato, porque no es un microservicio y no
+habla ese lenguaje (spec 10, §12 DD-09).
+
+### 3.2 Frontend
+
+`clienteApi.js` es la única pieza que llama `fetch` y la única que interpreta la respuesta.
+Si el cuerpo trae `{ codigo, mensaje }` lo usa; si no —un `502` del gateway, la red
+cortada—, sintetiza `{ codigo: "ERROR_INTERNO", mensaje: "No se pudo contactar al servicio" }`
+y lanza un `ErrorApi` con `estado`, `codigo` y `mensaje`. Así todos los componentes conocen
+una sola forma de error (spec 06, §12 D-04).
+
+Lo que `clienteApi` **no** hace es interpretar el `401`: lo devuelve y cada llamador decide,
+porque el `401` del inicio de sesión son credenciales malas y no debe borrar nada, mientras
+que el de una llamada con sesión es un token vencido y sí debe cerrarla (spec 06, §12 D-07).
+Esa decisión vive en un único envoltorio por remote, en `ReservasApp.jsx`: ante un `401`
+llama `onLogout()` y devuelve error `null` a propósito, para no pintar un mensaje sobre una
+pantalla que el shell ya está desmontando. Cualquier otro error baja como estado hasta
+`MensajeError.jsx`.
+
+Aparte de todo lo anterior está el fallo que no es HTTP: el remote que no descarga o que
+revienta al renderizar. Eso solo lo intercepta `BordeError.jsx`, que muestra "Modulo no
+disponible" y reintenta al cambiar de módulo, sin tumbar el shell (spec 06, §12 D-10).
+
+### 3.3 Qué se centraliza y qué no
+
+Conviene no confundir tres cosas que suenan parecidas:
+
+| Asunto | ¿Centralizado? | Dónde |
+|---|---|---|
+| **Enrutado hacia los microservicios** | Sí, en un solo archivo | [`../infra/nginx/gateway.conf`](../infra/nginx/gateway.conf): los cuatro frontends solo conocen `/api`; qué microservicio atiende cada prefijo se declara aquí y en ningún otro lado |
+| **Forma del error de la API** | Sí, pero **por microservicio** | Un `ManejadorExcepciones` en cada uno. No hay un traductor global: el gateway no habla el contrato y no traduce el `502` (spec 10, §12 DD-09) |
+| **Autenticación** | **No en el gateway.** Se valida en cada microservicio | El gateway solo reenvía `Authorization` sin tocarlo; el `FiltroToken` de cada servicio valida el JWT localmente. Spec 10, §13 declara explícitamente que este diseño no introduce autenticación en el gateway |
+| **Secreto de firma del token (`JWT_SECRET`)** | Sí, un único valor | Definido una vez en `.env` e inyectado a los cuatro servicios desde [`../docker-compose.yml`](../docker-compose.yml). Es lo que permite que cualquier servicio valide un token emitido por `ms-usuarios` sin llamarlo, y lo que hace posible el token `SERVICIO` |
+| **Credenciales de base de datos** | **No, y a propósito** | Un usuario y una contraseña por servicio, creados en [`../infra/postgres/init.sql`](../infra/postgres/init.sql) e inyectados por separado a cada contenedor. Centralizarlas anularía Database per Service: con una credencial común, cualquier servicio podría leer la base de otro |
+
+Dicho corto: se centraliza **el camino** (un gateway) y **la clave de firma** (un `JWT_SECRET`);
+no se centralizan **la decisión de seguridad** (cada servicio valida y autoriza) ni **el acceso
+a datos** (cada servicio con su propia credencial y su propia base).
+
+---
+
+## 4. Patrones descartados deliberadamente
 
 | Patrón | Por qué no aplica a este sistema |
 |---|---|
@@ -61,7 +151,7 @@ capas definen la estructura interna dentro de cada límite.
 
 ---
 
-## 4. Recorrido guiado
+## 5. Recorrido guiado
 
 Cinco archivos en orden, para mostrar la arquitectura en vivo en dos minutos.
 
@@ -75,7 +165,7 @@ Cinco archivos en orden, para mostrar la arquitectura en vivo en dos minutos.
 CM
 ---
 
-## 5. Dónde está el porqué de cada decisión
+## 6. Dónde está el porqué de cada decisión
 
 Las rutas de la última columna son relativas a [`../.claude/specs/`](../.claude/specs/).
 
